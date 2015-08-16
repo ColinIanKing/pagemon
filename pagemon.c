@@ -23,6 +23,8 @@ static bool resized;
 enum {
 	WHITE_RED = 1,
 	WHITE_BLUE,
+	WHITE_YELLOW,
+	WHITE_CYAN,
 	BLACK_WHITE,
 	CYAN_BLUE,
 	RED_BLUE,
@@ -31,7 +33,6 @@ enum {
 	BLACK_YELLOW,
 	YELLOW_RED,
 	YELLOW_BLACK,
-	WHITE_YELLOW
 };
 
 typedef struct {
@@ -68,9 +69,11 @@ int read_mmaps(const char *filename, map_t *maps, const int max)
 	return i;
 }
 
-void handle_winch(int sig){
-	resized = true;
+void handle_winch(int sig)
+{
+	(void)sig;
 
+	resized = true;
 }
 
 void show_usage(void)
@@ -94,6 +97,7 @@ int main(int argc, char **argv)
 	int map_index = 0;
 	int tick = 0;
 	int xpos = 0, ypos = 0;
+	bool page_view = false;
 
 	for (;;) {
 		int c = getopt(argc, argv, "h");
@@ -143,6 +147,7 @@ int main(int argc, char **argv)
 	init_pair(WHITE_RED, COLOR_WHITE, COLOR_RED);
 	init_pair(WHITE_BLUE, COLOR_WHITE, COLOR_BLUE);
 	init_pair(WHITE_YELLOW, COLOR_WHITE, COLOR_YELLOW);
+	init_pair(WHITE_CYAN, COLOR_WHITE, COLOR_CYAN);
 
 	init_pair(BLACK_WHITE, COLOR_BLACK, COLOR_WHITE);
 	init_pair(CYAN_BLUE, COLOR_CYAN, COLOR_BLUE);
@@ -179,18 +184,12 @@ int main(int argc, char **argv)
 		tick++;
 		if (tick > 10) {
 			tick = 0;
-		fd = open(path_refs, O_RDWR);
-		if (fd < 0)
-			break;
-		if (write(fd, "4", 1) < 0)
-			break;
-		if (write(fd, "3", 1) < 0)
-			break;
-		if (write(fd, "2", 1) < 0)
-			break;
-		if (write(fd, "1", 1) < 0)
-			break;
-		(void)close(fd);
+			fd = open(path_refs, O_RDWR);
+			if (fd < 0)
+				break;
+			if (write(fd, "4", 1) < 0)
+				break;
+			(void)close(fd);
 		}
 
 		fd = open(path_map, O_RDONLY);
@@ -205,12 +204,22 @@ int main(int argc, char **argv)
 		wattrset(mainwin, COLOR_PAIR(WHITE_RED));
 		wprintw(mainwin, "A");
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
-		wprintw(mainwin, " ANON or FILE mapped ");
+		wprintw(mainwin, " ANON or FILE mapped, ");
 
 		wattrset(mainwin, COLOR_PAIR(WHITE_YELLOW));
 		wprintw(mainwin, "R");
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
-		wprintw(mainwin, " in RAM");
+		wprintw(mainwin, " in RAM, ");
+
+		wattrset(mainwin, COLOR_PAIR(WHITE_CYAN));
+		wprintw(mainwin, "D");
+		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
+		wprintw(mainwin, " Dirty, ");
+
+		wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
+		wprintw(mainwin, ".");
+		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
+		wprintw(mainwin, " not in RAM");
 
 		wattrset(mainwin, COLOR_PAIR(BLACK_WHITE) | A_BOLD);
 		tmp_index = map_index;
@@ -252,7 +261,7 @@ int main(int argc, char **argv)
 					state = 'A';
 				}
 				if (buffer[j] & ((uint64_t)1 << 55)) {
-					wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
+					wattrset(mainwin, COLOR_PAIR(WHITE_CYAN));
 					state = 'D';
 				}
 				mvwprintw(mainwin, i, 17 + j, "%c", state);
@@ -286,6 +295,10 @@ int main(int argc, char **argv)
 		mvwprintw(mainwin, ypos + 1, xpos + 17, "#");
 		wattrset(mainwin, A_NORMAL);
 
+		if (page_view) {
+			mvwprintw(mainwin, 3, 4, "PAGE DATA:");
+		}
+
 		wrefresh(mainwin);
 		refresh();
 
@@ -294,6 +307,9 @@ int main(int argc, char **argv)
 		case 'q':
 		case 'Q':
 			do_run = false;
+			break;
+		case '\t':
+			page_view = !page_view;
 			break;
 		case KEY_DOWN:
 			ypos++;
@@ -342,7 +358,7 @@ int main(int argc, char **argv)
 				map_index = 0;
 			addr = mmaps[map_index].begin;
 		}
-		usleep(1000);
+		usleep(5000);
 	} while (do_run);
 
 
