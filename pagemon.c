@@ -165,8 +165,8 @@ int main(int argc, char **argv)
 	do {
 		int ch;
 		int i;
-		const int width_step = COLS - 17;
-		const unsigned long width_page_step = page_size * width_step;
+		int width_step = COLS - 17;
+		unsigned long width_page_step = page_size * width_step;
 		int fd;
 		unsigned long tmp_addr;
 		int tmp_index;
@@ -175,6 +175,15 @@ int main(int argc, char **argv)
 
 		if (resized) {
 			delwin(mainwin);
+			endwin();
+			refresh();
+			clear();
+			if (COLS < 18)
+				break;
+			if (LINES < 5)
+				break;
+			width_step = COLS - 17;
+			width_page_step = page_size * width_step;
 			mainwin = newwin(LINES, COLS, 0, 0);
 			resized = false;
 		}
@@ -283,7 +292,9 @@ int main(int argc, char **argv)
 				wprintw(mainwin, "%s %s %-20.20s",
 					mmaps[i].attr,
 					mmaps[i].dev,
-					basename(mmaps[i].name));
+					mmaps[i].name[0] == '\0' ?
+						"[Anonymous]" :
+						basename(mmaps[i].name));
 				break;
 			}
 		}
