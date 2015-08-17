@@ -40,7 +40,7 @@ typedef struct {
 	unsigned long end;
 	char attr[5];
 	char dev[6];
-	char name[256];
+	char name[NAME_MAX + 1];
 } map_t;
 
 int read_mmaps(const char *filename, map_t *maps, const int max)
@@ -307,7 +307,7 @@ int main(int argc, char **argv)
 		wattrset(mainwin, A_NORMAL);
 
 		if (page_view) {
-			mvwprintw(mainwin, 3, 4, "PAGE DATA:");
+			mvwprintw(mainwin, 3, 4, "PAGE DATA %d %d\n", map_index, nmaps);
 		}
 
 		wrefresh(mainwin);
@@ -361,7 +361,9 @@ int main(int argc, char **argv)
 			map_index--;
 			if (map_index < 0)
 				map_index = nmaps - 1;
-			addr = mmaps[map_index].begin;
+			addr = mmaps[map_index].end - width_page_step;
+			if (addr < mmaps[map_index].begin)
+				addr = mmaps[map_index].begin;
 		}
 		if (addr > mmaps[map_index].end) {
 			map_index++;
