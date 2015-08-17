@@ -25,6 +25,7 @@ enum {
 	WHITE_BLUE,
 	WHITE_YELLOW,
 	WHITE_CYAN,
+	WHITE_GREEN,
 	BLACK_WHITE,
 	CYAN_BLUE,
 	RED_BLUE,
@@ -54,12 +55,15 @@ int read_mmaps(const char *filename, map_t *maps, const int max)
 		return 0;
 
 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
+		maps[i].name[0] = '\0';
 		sscanf(buffer, "%lx-%lx %5s %*s %6s %*d %s",
 			&maps[i].begin,
 			&maps[i].end,
 			maps[i].attr,
 			maps[i].dev,
 			maps[i].name);
+
+		maps[i].end--;
 			
 		i++;
 		if (i >= max)
@@ -148,6 +152,7 @@ int main(int argc, char **argv)
 	init_pair(WHITE_BLUE, COLOR_WHITE, COLOR_BLUE);
 	init_pair(WHITE_YELLOW, COLOR_WHITE, COLOR_YELLOW);
 	init_pair(WHITE_CYAN, COLOR_WHITE, COLOR_CYAN);
+	init_pair(WHITE_GREEN, COLOR_WHITE, COLOR_GREEN);
 
 	init_pair(BLACK_WHITE, COLOR_BLACK, COLOR_WHITE);
 	init_pair(CYAN_BLUE, COLOR_CYAN, COLOR_BLUE);
@@ -168,10 +173,11 @@ int main(int argc, char **argv)
 		int width_step = COLS - 17;
 		unsigned long width_page_step = page_size * width_step;
 		int fd;
-		unsigned long tmp_addr;
+		unsigned long tmp_addr, cur_addr;
 		int tmp_index;
 		unsigned long addrs[LINES-2];
 		bool mmapped;
+		uint64_t buffer[width_step];
 
 		if (resized) {
 			delwin(mainwin);
@@ -201,9 +207,6 @@ int main(int argc, char **argv)
 			(void)close(fd);
 		}
 
-		fd = open(path_map, O_RDONLY);
-		if (fd < 0)
-			break;
 
 		ch = getch();
 
@@ -213,7 +216,7 @@ int main(int argc, char **argv)
 		wattrset(mainwin, COLOR_PAIR(WHITE_RED));
 		wprintw(mainwin, "A");
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
-		wprintw(mainwin, " ANON or FILE mapped, ");
+		wprintw(mainwin, " Mapped anon/file, ");
 
 		wattrset(mainwin, COLOR_PAIR(WHITE_YELLOW));
 		wprintw(mainwin, "R");
@@ -225,6 +228,11 @@ int main(int argc, char **argv)
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
 		wprintw(mainwin, " Dirty, ");
 
+		wattrset(mainwin, COLOR_PAIR(WHITE_CYAN));
+		wprintw(mainwin, "S");
+		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
+		wprintw(mainwin, " Swap, ");
+
 		wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
 		wprintw(mainwin, ".");
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
@@ -233,8 +241,10 @@ int main(int argc, char **argv)
 		wattrset(mainwin, COLOR_PAIR(BLACK_WHITE) | A_BOLD);
 		tmp_index = map_index;
 		tmp_addr = addr;
+		fd = open(path_map, O_RDONLY);
+		if (fd < 0)
+			break;
 		for (i = 1; i < LINES - 1; i++) {
-			uint64_t buffer[width_step];
 			int j;
 			unsigned long addr_check;
 
@@ -246,7 +256,6 @@ int main(int argc, char **argv)
 			}
 			addrs[i - 1] = tmp_addr;
 			lseek(fd, sizeof(uint64_t) * (tmp_addr / page_size), SEEK_SET);
-
 			if (read(fd, buffer, sizeof(buffer)) < 0)
 				break;
 			wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
@@ -263,11 +272,12 @@ int main(int argc, char **argv)
 					state = 'R';
 				}
 				if (buffer[j] & ((uint64_t)1 << 62)) {
+					wattrset(mainwin, COLOR_PAIR(WHITE_GREEN));
 					state = 'S';
 				}
 				if (buffer[j] & ((uint64_t)1 << 61)) {
 					wattrset(mainwin, COLOR_PAIR(WHITE_RED));
-					state = 'A';
+					state = 'M';
 				}
 				if (buffer[j] & ((uint64_t)1 << 55)) {
 					wattrset(mainwin, COLOR_PAIR(WHITE_CYAN));
@@ -278,16 +288,16 @@ int main(int argc, char **argv)
 			}
 			tmp_addr += width_page_step;
 		}
-		close(fd);
-		tmp_addr = addrs[ypos] + (4096 * xpos);
+		cur_addr = addrs[ypos] + (4096 * xpos);
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
 		mvwprintw(mainwin, 0, 0, "Pagemon 0x%16.16lx ",
-			tmp_addr);
+			cur_addr);
+
 
 		mmapped = false;
 		for (i = 0; i < nmaps; i++) {
-			if (mmaps[i].begin <= tmp_addr &&
-			    mmaps[i].end >= tmp_addr) {
+			if (mmaps[i].begin <= cur_addr &&
+			    mmaps[i].end >= cur_addr) {
 				mmapped = true;
 				wprintw(mainwin, "%s %s %-20.20s",
 					mmaps[i].attr,
@@ -302,13 +312,36 @@ int main(int argc, char **argv)
 			wprintw(mainwin, "Unmapped Page                   ");
 		wattrset(mainwin, A_NORMAL);
 
+		if (page_view) {
+			wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+			mvwprintw(mainwin, 3, 4, " Page:   0x%16.16x                  ", cur_addr);
+			if (mmapped)
+				mvwprintw(mainwin, 4, 4, " Map:    0x%16.16lx-%16.16lx ",
+					mmaps[i].begin, mmaps[i].end);
+			else
+				mvwprintw(mainwin, 4, 4, " Map:    Not mapped                          ");
+			mvwprintw(mainwin, 5, 4, " Device: %5.5s                               ", mmaps[i].dev);
+			mvwprintw(mainwin, 6, 4, " Prot:   %4.4s                                ", mmaps[i].attr);
+			mvwprintw(mainwin, 6, 4, " File:   %-20.20s ", basename(mmaps[i].name));
+			lseek(fd, sizeof(uint64_t) * (cur_addr / page_size), SEEK_SET);
+			if (read(fd, buffer, sizeof(uint64_t)) < 0)
+				break;
+			mvwprintw(mainwin, 7, 4, " Flag:   0x%16.16lx                  ", buffer[0]);
+			mvwprintw(mainwin, 8, 4, "   Present in RAM:      %3s                  ", 
+				(buffer[0] & ((uint64_t)1 << 63)) ? "Yes" : "No ");
+			mvwprintw(mainwin, 9, 4, "   Present in Swap:     %3s                  ", 
+				(buffer[0] & ((uint64_t)1 << 62)) ? "Yes" : "No ");
+			mvwprintw(mainwin, 10, 4, "   File or Shared Anon: %3s                  ", 
+				(buffer[0] & ((uint64_t)1 << 61)) ? "Yes" : "No ");
+			mvwprintw(mainwin, 11, 4, "   Soft-dirty PTE:      %3s                  ", 
+				(buffer[0] & ((uint64_t)1 << 55)) ? "Yes" : "No ");
+		}
+		close(fd);
+
 		wattrset(mainwin, COLOR_PAIR(CYAN_BLUE) | A_BOLD);
 		mvwprintw(mainwin, ypos + 1, xpos + 17, "#");
 		wattrset(mainwin, A_NORMAL);
 
-		if (page_view) {
-			mvwprintw(mainwin, 3, 4, "PAGE DATA %d %d\n", map_index, nmaps);
-		}
 
 		wrefresh(mainwin);
 		refresh();
