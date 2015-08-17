@@ -26,6 +26,7 @@ enum {
 	WHITE_YELLOW,
 	WHITE_CYAN,
 	WHITE_GREEN,
+	WHITE_BLACK,
 	BLACK_WHITE,
 	CYAN_BLUE,
 	RED_BLUE,
@@ -100,6 +101,7 @@ int main(int argc, char **argv)
 	int nmaps;
 	int map_index = 0;
 	int tick = 0;
+	int blink = 0;
 	int xpos = 0, ypos = 0;
 	bool page_view = false;
 
@@ -153,6 +155,7 @@ int main(int argc, char **argv)
 	init_pair(WHITE_YELLOW, COLOR_WHITE, COLOR_YELLOW);
 	init_pair(WHITE_CYAN, COLOR_WHITE, COLOR_CYAN);
 	init_pair(WHITE_GREEN, COLOR_WHITE, COLOR_GREEN);
+	init_pair(WHITE_BLACK, COLOR_WHITE, COLOR_BLACK);
 
 	init_pair(BLACK_WHITE, COLOR_BLACK, COLOR_WHITE);
 	init_pair(CYAN_BLUE, COLOR_CYAN, COLOR_BLUE);
@@ -338,8 +341,9 @@ int main(int argc, char **argv)
 		}
 		close(fd);
 
-		wattrset(mainwin, COLOR_PAIR(CYAN_BLUE) | A_BOLD);
-		mvwprintw(mainwin, ypos + 1, xpos + 17, "#");
+		blink++;
+		wattrset(mainwin, A_BOLD | ((blink & 0x20) ? COLOR_PAIR(WHITE_YELLOW) : COLOR_PAIR(WHITE_RED)));
+		mvwprintw(mainwin, ypos + 1, xpos + 17, " ");
 		wattrset(mainwin, A_NORMAL);
 
 
