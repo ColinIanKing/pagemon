@@ -131,6 +131,7 @@ int main(int argc, char **argv)
 	int xpos = 0, ypos = 0;
 	bool page_view = false;
 	page_t *pages;
+	unsigned long zoom = 1;
 
 	for (;;) {
 		int c = getopt(argc, argv, "h");
@@ -302,19 +303,20 @@ int main(int argc, char **argv)
 				}
 				mvwprintw(mainwin, i, 17 + j, "%c", state);
 				
-				tmp_index++;
-				if (tmp_index > npages) 
+				tmp_index += zoom;
+				if (tmp_index > npages) {
 					tmp_index = 0;
+				}
 			}
 		}
-		tmp_index = xpos + (ypos * width_step);
+		tmp_index = page_index + (xpos + (ypos * width_step));
 		if (tmp_index >= npages)
 			tmp_index = 0;
 		mmap = &mmaps[pages[tmp_index].mapping];
 		
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		mvwprintw(mainwin, 0, 0, "Pagemon 0x%16.16lx ",
-			pages[tmp_index].addr);
+		mvwprintw(mainwin, 0, 0, "Pagemon 0x%16.16lx Zoom x %u ",
+			pages[tmp_index].addr, zoom);
 		wprintw(mainwin, "%s %s %-20.20s",
 			mmap->attr,
 			mmap->dev,
@@ -353,7 +355,6 @@ int main(int argc, char **argv)
 		mvwprintw(mainwin, ypos + 1, xpos + 17, " ");
 		wattrset(mainwin, A_NORMAL);
 
-
 		wrefresh(mainwin);
 		refresh();
 
@@ -365,6 +366,16 @@ int main(int argc, char **argv)
 			break;
 		case '\t':
 			page_view = !page_view;
+			break;
+		case '+':
+			zoom++ ;
+			if (zoom > 8)
+				zoom = 8;
+			break;
+		case '-':
+			zoom--;
+			if (zoom < 1)
+				zoom = 1;
 			break;
 		case KEY_DOWN:
 			ypos++;
@@ -394,23 +405,21 @@ int main(int argc, char **argv)
 			ypos--;
 		}
 		if (ypos > LINES-3) {
-			page_index += (width_step * (ypos - (LINES-3)));
+			page_index += zoom * (width_step * (ypos - (LINES-3)));
 			ypos = LINES-3;
 		}
 		if (ypos < 0) {
-			page_index -= (width_step * (-ypos));
+			page_index -= zoom * (width_step * (-ypos));
 			ypos = 0;
 		}
 		if (page_index > npages) {
 			page_index = 0;
 		}
 		free(pages);
-		usleep(5000);
+		usleep(10000);
 	} while (do_run);
 
-
 	endwin();
-
 	exit(EXIT_SUCCESS);
 }
 
