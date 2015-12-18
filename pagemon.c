@@ -200,6 +200,7 @@ int main(int argc, char **argv)
 		int i;
 		int width_step = COLS - 17;
 		int fd;
+		char curch;
 
 		read_mmaps(path_mmap, mmaps, MAX_MMAPS, &pages, &npages);
 
@@ -351,8 +352,9 @@ int main(int argc, char **argv)
 		close(fd);
 
 		blink++;
-		wattrset(mainwin, A_BOLD | ((blink & 0x20) ? COLOR_PAIR(WHITE_YELLOW) : COLOR_PAIR(WHITE_RED)));
-		mvwprintw(mainwin, ypos + 1, xpos + 17, " ");
+		wattrset(mainwin, A_BOLD | ((blink & 0x20) ? COLOR_PAIR(BLACK_WHITE) : COLOR_PAIR(WHITE_BLACK)));
+		curch = mvwinch(mainwin, ypos + 1, xpos + 17) & A_CHARTEXT;
+		mvwprintw(mainwin, ypos + 1, xpos + 17, "%c", curch);
 		wattrset(mainwin, A_NORMAL);
 
 		wrefresh(mainwin);
@@ -378,21 +380,27 @@ int main(int argc, char **argv)
 				zoom = 1;
 			break;
 		case KEY_DOWN:
+			blink = 0;
 			ypos++;
 			break;
 		case KEY_UP:
+			blink = 0;
 			ypos--;
 			break;
 		case KEY_LEFT:
+			blink = 0;
 			xpos--;
 			break;
 		case KEY_RIGHT:
+			blink = 0;
 			xpos++;
 			break;
 		case KEY_NPAGE:
+			blink = 0;
 			ypos += (LINES - 2) / 2;
 			break;
 		case KEY_PPAGE:
+			blink = 0;
 			ypos -= (LINES - 2) / 2;
 			break;
 		}
