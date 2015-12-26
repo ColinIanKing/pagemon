@@ -57,22 +57,27 @@ enum {
 };
 
 typedef struct {
-	unsigned long begin;
-	unsigned long end;
+	uint64_t begin;
+	uint64_t end;
 	char attr[5];
 	char dev[6];
 	char name[NAME_MAX + 1];
 } map_t;
 
 typedef struct {
-	unsigned long addr;
-	unsigned int  mapping;
+	uint64_t addr;
+	uint32_t mapping;
 } page_t;
 
-int read_mmaps(const char *filename, map_t *maps, const unsigned int max, page_t **pages, unsigned long *npages)
+uint32_t read_mmaps(
+	const char *filename,
+	map_t *maps,
+	const uint32_t max,
+	page_t **pages,
+	uint64_t *npages)
 {
 	FILE *fp;
-	unsigned long n = 0, i, j;
+	uint32_t n = 0, i, j;
 	char buffer[4096];
 	page_t *page;
 
@@ -85,7 +90,7 @@ int read_mmaps(const char *filename, map_t *maps, const unsigned int max, page_t
 
 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
 		maps[n].name[0] = '\0';
-		sscanf(buffer, "%lx-%lx %5s %*s %6s %*d %s",
+		sscanf(buffer, "%" SCNx64 "-%" SCNx64 " %5s %*s %6s %*d %s",
 			&maps[n].begin,
 			&maps[n].end,
 			maps[n].attr,
@@ -104,8 +109,8 @@ int read_mmaps(const char *filename, map_t *maps, const unsigned int max, page_t
 	*pages = page = malloc(*npages * sizeof(page_t));
 
 	for (i = 0; i < n; i++) {
-		unsigned long count = (maps[i].end - maps[i].begin) / PAGE_SIZE;
-		unsigned long addr = maps[i].begin;
+		uint64_t count = (maps[i].end - maps[i].begin) / PAGE_SIZE;
+		uint64_t addr = maps[i].begin;
 
 		for (j = 0; j < count; j++) {
 			page->addr = addr;
@@ -134,10 +139,10 @@ void show_usage(void)
 
 int main(int argc, char **argv)
 {
-	unsigned long addr = 0;
-	unsigned long page_size = PAGE_SIZE;
-	unsigned long npages;
-	unsigned long page_index = 0, tmp_index;
+	uint64_t addr = 0;
+	uint64_t npages;
+	uint32_t page_size = PAGE_SIZE;
+	uint64_t page_index = 0, tmp_index, prev_page_index;
 	bool do_run = true;
 	pid_t pid = -1;
 	char path_refs[PATH_MAX];
@@ -146,10 +151,11 @@ int main(int argc, char **argv)
 	map_t mmaps[MAX_MMAPS], *mmap;
 	int tick = 0;
 	int blink = 0;
-	int xpos = 0, ypos = 0;
+	int32_t xpos = 0, ypos = 0;
+	int32_t prev_xpos, prev_ypos;
 	bool page_view = false;
 	page_t *pages;
-	unsigned long zoom = 1;
+	uint32_t zoom = 1;
 
 	for (;;) {
 		int c = getopt(argc, argv, "h");
@@ -214,14 +220,12 @@ int main(int argc, char **argv)
 	signal(SIGWINCH, handle_winch);
 
 	do {
-		int ch;
-		int i;
-		int width_step = COLS - 17;
-		int fd;
+		int ch, fd;
+		int32_t i, width_step = COLS - 17;
 		char curch;
+		bool eod = false;
 
 		read_mmaps(path_mmap, mmaps, MAX_MMAPS, &pages, &npages);
-
 		if (resized) {
 			delwin(mainwin);
 			endwin();
@@ -248,8 +252,6 @@ int main(int argc, char **argv)
 				break;
 			(void)close(fd);
 		}
-
-
 		ch = getch();
 
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
@@ -287,63 +289,73 @@ int main(int argc, char **argv)
 
 		tmp_index = page_index;
 		for (i = 1; i < LINES - 1; i++) {
-			int j;
+			int32_t j;
 			uint64_t info;
 
 			addr = pages[tmp_index].addr;
 			wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-			mvwprintw(mainwin, i, 0, "%16.16lx %s", addr);
+			mvwprintw(mainwin, i, 0, "%16.16lx ", addr);
 
 			for (j = 0; j < width_step; j++) {
 				char state = '.';
-			
-				addr = pages[tmp_index].addr;
-				lseek(fd, sizeof(uint64_t) * (addr / page_size), SEEK_SET);
-				if (read(fd, &info, sizeof(info)) < 0)
-					break;
 
-				wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-
-				if (info & ((uint64_t)1 << 63)) {
-					wattrset(mainwin, COLOR_PAIR(WHITE_YELLOW));
-					state = 'R';
-				}
-				if (info & ((uint64_t)1 << 62)) {
-					wattrset(mainwin, COLOR_PAIR(WHITE_GREEN));
-					state = 'S';
-				}
-				if (info & ((uint64_t)1 << 61)) {
-					wattrset(mainwin, COLOR_PAIR(WHITE_RED));
-					state = 'M';
-				}
-				if (info & ((uint64_t)1 << 55)) {
+				if (eod) {
 					wattrset(mainwin, COLOR_PAIR(WHITE_CYAN));
-					state = 'D';
+					state = '~';
+				} else {
+					addr = pages[tmp_index].addr;
+					lseek(fd, sizeof(uint64_t) * (addr / page_size), SEEK_SET);
+					if (read(fd, &info, sizeof(info)) < 0)
+						break;
+
+					wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
+
+					if (info & ((uint64_t)1 << 63)) {
+						wattrset(mainwin, COLOR_PAIR(WHITE_YELLOW));
+						state = 'R';
+					}
+					if (info & ((uint64_t)1 << 62)) {
+						wattrset(mainwin, COLOR_PAIR(WHITE_GREEN));
+						state = 'S';
+					}
+					if (info & ((uint64_t)1 << 61)) {
+						wattrset(mainwin, COLOR_PAIR(WHITE_RED));
+						state = 'M';
+					}
+					if (info & ((uint64_t)1 << 55)) {
+						wattrset(mainwin, COLOR_PAIR(WHITE_CYAN));
+						state = 'D';
+					}
+					
+					tmp_index += zoom;
+					if (tmp_index > npages) {
+						tmp_index = npages;
+						eod = true;
+					}
 				}
 				mvwprintw(mainwin, i, 17 + j, "%c", state);
-				
-				tmp_index += zoom;
-				if (tmp_index > npages) {
-					tmp_index = 0;
-				}
 			}
 		}
-		tmp_index = page_index + (xpos + (ypos * width_step));
-		if (tmp_index >= npages)
-			tmp_index = 0;
-		mmap = &mmaps[pages[tmp_index].mapping];
-		
-		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		mvwprintw(mainwin, 0, 0, "Pagemon 0x%16.16lx Zoom x %u ",
-			pages[tmp_index].addr, zoom);
-		wprintw(mainwin, "%s %s %-20.20s",
-			mmap->attr,
-			mmap->dev,
-			mmap->name[0] == '\0' ?
-				"[Anonymous]" :
-				basename(mmaps[i].name));
-		wattrset(mainwin, A_NORMAL);
 
+		eod = false;
+		tmp_index = page_index + (xpos + (ypos * width_step));
+		if (tmp_index > npages)
+			eod = true;
+
+		mmap = &mmaps[pages[tmp_index].mapping];
+		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		if (eod) {
+			mvwprintw(mainwin, 0, 0, "Pagemon 0x---------------- Zoom x %u ", zoom);
+			wprintw(mainwin, "---- --:-- %-20.20s", "");
+		} else {
+			mvwprintw(mainwin, 0, 0, "Pagemon 0x%16.16" PRIx64 " Zoom x %u ",
+				pages[tmp_index].addr, zoom);
+			wprintw(mainwin, "%s %s %-20.20s",
+				mmap->attr, mmap->dev, mmap->name[0] == '\0' ?
+					"[Anonymous]" : basename(mmap->name));
+		}
+
+		wattrset(mainwin, A_NORMAL);
 		if (page_view) {
 			uint64_t info;
 
@@ -377,6 +389,10 @@ int main(int argc, char **argv)
 
 		wrefresh(mainwin);
 		refresh();
+
+		prev_page_index = page_index;
+		prev_xpos = xpos;
+		prev_ypos = ypos;
 
 		switch (ch) {
 		case 27:	/* ESC */
@@ -431,15 +447,17 @@ int main(int argc, char **argv)
 			ypos--;
 		}
 		if (ypos > LINES-3) {
-			page_index += zoom * (width_step * (ypos - (LINES-3)));
+			page_index += zoom * width_step * (ypos - (LINES-3));
 			ypos = LINES-3;
 		}
 		if (ypos < 0) {
-			page_index -= zoom * (width_step * (-ypos));
+			page_index -= zoom * width_step * (-ypos);
 			ypos = 0;
 		}
-		if (page_index > npages) {
-			page_index = 0;
+		if (page_index >= (npages - (zoom * width_step * (LINES -3 )))) {
+			page_index = prev_page_index;
+			xpos = prev_xpos;
+			ypos = prev_ypos;
 		}
 		free(pages);
 		usleep(10000);
