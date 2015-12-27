@@ -54,6 +54,7 @@ enum {
 	BLACK_YELLOW,
 	YELLOW_RED,
 	YELLOW_BLACK,
+	BLACK_BLACK,
 };
 
 typedef struct {
@@ -66,15 +67,15 @@ typedef struct {
 
 typedef struct {
 	uint64_t addr;
-	uint32_t mapping;
+	map_t   *map;
 } page_t;
 
 uint32_t read_mmaps(
 	const char *filename,
-	map_t *maps,
+	map_t maps[MAX_MMAPS],
 	const uint32_t max,
 	page_t **pages,
-	uint64_t *npages)
+	int64_t *npages)
 {
 	FILE *fp;
 	uint32_t n = 0, i, j;
@@ -82,7 +83,9 @@ uint32_t read_mmaps(
 	page_t *page;
 
 	*pages = NULL;
-	*npages = 0UL;
+	*npages = 0;
+
+	memset(maps, 0, sizeof(map_t) * MAX_MMAPS);
 
 	fp = fopen(filename, "r");
 	if (fp == NULL)
@@ -97,16 +100,14 @@ uint32_t read_mmaps(
 			maps[n].dev,
 			maps[n].name);
 
-		*npages += (maps[n].end - maps[n].begin) / PAGE_SIZE;
-		maps[n].end--;
-			
+		(*npages) += (maps[n].end - maps[n].begin) / PAGE_SIZE;
 		n++;
 		if (n >= max)
 			break;
 	}
 	fclose(fp);
 
-	*pages = page = malloc(*npages * sizeof(page_t));
+	*pages = page = calloc(*npages, sizeof(page_t));
 
 	for (i = 0; i < n; i++) {
 		uint64_t count = (maps[i].end - maps[i].begin) / PAGE_SIZE;
@@ -114,13 +115,12 @@ uint32_t read_mmaps(
 
 		for (j = 0; j < count; j++) {
 			page->addr = addr;
-			page->mapping = i;
+			page->map = &maps[i];
 			addr += PAGE_SIZE;
 			page++;
 		}
 	}
-
-	return i;
+	return n;
 }
 
 void handle_winch(int sig)
@@ -140,9 +140,9 @@ void show_usage(void)
 int main(int argc, char **argv)
 {
 	uint64_t addr = 0;
-	uint64_t npages;
+	int64_t npages;
 	uint32_t page_size = PAGE_SIZE;
-	uint64_t page_index = 0, tmp_index, prev_page_index;
+	int64_t page_index = 0, tmp_index, prev_page_index;
 	bool do_run = true;
 	pid_t pid = -1;
 	char path_refs[PATH_MAX];
@@ -190,6 +190,7 @@ int main(int argc, char **argv)
 	snprintf(path_mmap, sizeof(path_mmap),
 		"/proc/%i/maps", pid);
 
+
 	resized = false;
 
 	initscr();
@@ -216,6 +217,7 @@ int main(int argc, char **argv)
 	init_pair(BLACK_YELLOW, COLOR_BLACK, COLOR_YELLOW);
 	init_pair(YELLOW_RED, COLOR_YELLOW, COLOR_RED);
 	init_pair(YELLOW_BLACK, COLOR_YELLOW, COLOR_BLACK);
+	init_pair(BLACK_BLACK, COLOR_BLACK, COLOR_BLACK);
 
 	signal(SIGWINCH, handle_winch);
 
@@ -292,15 +294,20 @@ int main(int argc, char **argv)
 			int32_t j;
 			uint64_t info;
 
-			addr = pages[tmp_index].addr;
-			wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-			mvwprintw(mainwin, i, 0, "%16.16lx ", addr);
+			if (tmp_index >= npages) {
+				wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
+				mvwprintw(mainwin, i, 0, "---------------- ");
+			} else {
+				addr = pages[tmp_index].addr;
+				wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
+				mvwprintw(mainwin, i, 0, "%16.16lx ", addr);
+			}
 
 			for (j = 0; j < width_step; j++) {
 				char state = '.';
 
-				if (eod) {
-					wattrset(mainwin, COLOR_PAIR(WHITE_CYAN));
+				if (tmp_index >= npages) {
+					wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
 					state = '~';
 				} else {
 					addr = pages[tmp_index].addr;
@@ -328,10 +335,6 @@ int main(int argc, char **argv)
 					}
 					
 					tmp_index += zoom;
-					if (tmp_index > npages) {
-						tmp_index = npages;
-						eod = true;
-					}
 				}
 				mvwprintw(mainwin, i, 17 + j, "%c", state);
 			}
@@ -339,12 +342,12 @@ int main(int argc, char **argv)
 
 		eod = false;
 		tmp_index = page_index + (xpos + (ypos * width_step));
-		if (tmp_index > npages)
+		if (tmp_index >= npages)
 			eod = true;
 
-		mmap = &mmaps[pages[tmp_index].mapping];
+		mmap = pages[tmp_index].map;
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		if (eod) {
+		if (!mmap || eod) {
 			mvwprintw(mainwin, 0, 0, "Pagemon 0x---------------- Zoom x %u ", zoom);
 			wprintw(mainwin, "---- --:-- %-20.20s", "");
 		} else {
@@ -356,13 +359,13 @@ int main(int argc, char **argv)
 		}
 
 		wattrset(mainwin, A_NORMAL);
-		if (page_view) {
+		if (mmap && page_view) {
 			uint64_t info;
 
 			wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-			mvwprintw(mainwin, 3, 4, " Page:   0x%16.16x                  ", pages[tmp_index].addr);
-			mvwprintw(mainwin, 4, 4, " Map:    0x%16.16lx-%16.16lx ",
-				mmap->begin, mmap->end);
+			mvwprintw(mainwin, 3, 4, " Page:   0x%16.16" PRIx64 "                  ", pages[tmp_index].addr);
+			mvwprintw(mainwin, 4, 4, " Map:    0x%16.16" PRIx64 "-%16.16" PRIx64 " ",
+				mmap->begin, mmap->end - 1);
 			mvwprintw(mainwin, 5, 4, " Device: %5.5s                               ", mmap->dev);
 			mvwprintw(mainwin, 6, 4, " Prot:   %4.4s                                ", mmap->attr);
 			mvwprintw(mainwin, 6, 4, " File:   %-20.20s ", basename(mmap->name));
@@ -446,15 +449,19 @@ int main(int argc, char **argv)
 			xpos = width_step - 1;
 			ypos--;
 		}
-		if (ypos > LINES-3) {
+		if (ypos > LINES - 3) {
 			page_index += zoom * width_step * (ypos - (LINES-3));
-			ypos = LINES-3;
+			ypos = LINES - 3;
 		}
 		if (ypos < 0) {
 			page_index -= zoom * width_step * (-ypos);
 			ypos = 0;
 		}
-		if (page_index >= (npages - (zoom * width_step * (LINES -3 )))) {
+		if (page_index < 0) {
+			page_index = 0;
+			ypos = 0;
+		}
+		if (page_index + zoom * (xpos + (ypos * width_step)) >= npages) {
 			page_index = prev_page_index;
 			xpos = prev_xpos;
 			ypos = prev_ypos;
