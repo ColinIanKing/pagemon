@@ -159,7 +159,7 @@ int main(int argc, char **argv)
 	map_t mmaps[MAX_MMAPS], *mmap;
 	int tick = 0;
 	int blink = 0;
-	bool page_view = false;
+	bool tab_info = false;
 	page_t *pages;
 	uint32_t zoom = 1;
 	position_t p;
@@ -368,7 +368,7 @@ int main(int argc, char **argv)
 		}
 
 		wattrset(mainwin, A_NORMAL);
-		if (mmap && page_view) {
+		if (mmap && tab_info) {
 			uint64_t info;
 
 			wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
@@ -413,7 +413,7 @@ int main(int argc, char **argv)
 			do_run = false;
 			break;
 		case '\t':
-			page_view = !page_view;
+			tab_info = !tab_info;
 			break;
 		case '+':
 			zoom++ ;
