@@ -70,6 +70,14 @@ typedef struct {
 	map_t   *map;
 } page_t;
 
+typedef struct {
+	int32_t xpos;
+	int32_t ypos;
+	int32_t xpos_prev;
+	int32_t ypos_prev;
+	int32_t ypos_max;
+} position_t;
+
 uint32_t read_mmaps(
 	const char *filename,
 	map_t maps[MAX_MMAPS],
@@ -151,11 +159,12 @@ int main(int argc, char **argv)
 	map_t mmaps[MAX_MMAPS], *mmap;
 	int tick = 0;
 	int blink = 0;
-	int32_t xpos = 0, ypos = 0;
-	int32_t prev_xpos, prev_ypos;
 	bool page_view = false;
 	page_t *pages;
 	uint32_t zoom = 1;
+	position_t p;
+
+	memset(&p, 0, sizeof(p));
 
 	for (;;) {
 		int c = getopt(argc, argv, "h");
@@ -341,17 +350,17 @@ int main(int argc, char **argv)
 		}
 
 		eod = false;
-		tmp_index = page_index + (xpos + (ypos * width_step));
+		tmp_index = page_index + (p.xpos + (p.ypos * width_step));
 		if (tmp_index >= npages)
 			eod = true;
 
 		mmap = pages[tmp_index].map;
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
 		if (!mmap || eod) {
-			mvwprintw(mainwin, 0, 0, "Pagemon 0x---------------- Zoom x %u ", zoom);
+			mvwprintw(mainwin, 0, 0, "Pagemon 0x---------------- Zoom x %3u ", zoom);
 			wprintw(mainwin, "---- --:-- %-20.20s", "");
 		} else {
-			mvwprintw(mainwin, 0, 0, "Pagemon 0x%16.16" PRIx64 " Zoom x %u ",
+			mvwprintw(mainwin, 0, 0, "Pagemon 0x%16.16" PRIx64 " Zoom x %3u ",
 				pages[tmp_index].addr, zoom);
 			wprintw(mainwin, "%s %s %-20.20s",
 				mmap->attr, mmap->dev, mmap->name[0] == '\0' ?
@@ -386,16 +395,16 @@ int main(int argc, char **argv)
 
 		blink++;
 		wattrset(mainwin, A_BOLD | ((blink & 0x20) ? COLOR_PAIR(BLACK_WHITE) : COLOR_PAIR(WHITE_BLACK)));
-		curch = mvwinch(mainwin, ypos + 1, xpos + 17) & A_CHARTEXT;
-		mvwprintw(mainwin, ypos + 1, xpos + 17, "%c", curch);
+		curch = mvwinch(mainwin, p.ypos + 1, p.xpos + 17) & A_CHARTEXT;
+		mvwprintw(mainwin, p.ypos + 1, p.xpos + 17, "%c", curch);
 		wattrset(mainwin, A_NORMAL);
 
 		wrefresh(mainwin);
 		refresh();
 
 		prev_page_index = page_index;
-		prev_xpos = xpos;
-		prev_ypos = ypos;
+		p.xpos_prev = p.xpos;
+		p.ypos_prev = p.ypos;
 
 		switch (ch) {
 		case 27:	/* ESC */
@@ -408,8 +417,8 @@ int main(int argc, char **argv)
 			break;
 		case '+':
 			zoom++ ;
-			if (zoom > 8)
-				zoom = 8;
+			if (zoom > 999)
+				zoom = 999;
 			break;
 		case '-':
 			zoom--;
@@ -418,53 +427,57 @@ int main(int argc, char **argv)
 			break;
 		case KEY_DOWN:
 			blink = 0;
-			ypos++;
+			p.ypos++;
 			break;
 		case KEY_UP:
 			blink = 0;
-			ypos--;
+			p.ypos--;
 			break;
 		case KEY_LEFT:
 			blink = 0;
-			xpos--;
+			p.xpos--;
 			break;
 		case KEY_RIGHT:
 			blink = 0;
-			xpos++;
+			p.xpos++;
 			break;
 		case KEY_NPAGE:
 			blink = 0;
-			ypos += (LINES - 2) / 2;
+			p.ypos += (LINES - 2) / 2;
 			break;
 		case KEY_PPAGE:
 			blink = 0;
-			ypos -= (LINES - 2) / 2;
+			p.ypos -= (LINES - 2) / 2;
 			break;
 		}
-		if (xpos >= width_step) {
-			xpos = 0;
-			ypos++;
+		p.ypos_max = (((npages - page_index) / zoom) - p.xpos) / width_step;
+
+		if (p.xpos >= width_step) {
+			p.xpos = 0;
+			p.ypos++;
 		}
-		if (xpos < 0) {
-			xpos = width_step - 1;
-			ypos--;
+		if (p.xpos < 0) {
+			p.xpos = width_step - 1;
+			p.ypos--;
 		}
-		if (ypos > LINES - 3) {
-			page_index += zoom * width_step * (ypos - (LINES-3));
-			ypos = LINES - 3;
+		if (p.ypos > p.ypos_max)
+			p.ypos = p.ypos_max;
+		if (p.ypos > LINES - 3) {
+			page_index += zoom * width_step * (p.ypos - (LINES-3));
+			p.ypos = LINES - 3;
 		}
-		if (ypos < 0) {
-			page_index -= zoom * width_step * (-ypos);
-			ypos = 0;
+		if (p.ypos < 0) {
+			page_index -= zoom * width_step * (-p.ypos);
+			p.ypos = 0;
 		}
 		if (page_index < 0) {
 			page_index = 0;
-			ypos = 0;
+			p.ypos = 0;
 		}
-		if (page_index + zoom * (xpos + (ypos * width_step)) >= npages) {
+		if (page_index + zoom * (p.xpos + (p.ypos * width_step)) >= npages) {
 			page_index = prev_page_index;
-			xpos = prev_xpos;
-			ypos = prev_ypos;
+			p.xpos = p.xpos_prev;
+			p.ypos = p.ypos_prev;
 		}
 		free(pages);
 		usleep(10000);
