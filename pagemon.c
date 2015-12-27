@@ -39,6 +39,9 @@ static bool resized;
 #define MAX_MMAPS	(8192)
 #define PAGE_SIZE	(4096)
 
+#define VIEW_PAGE	(0)
+#define VIEW_MEM	(1)
+
 enum {
 	WHITE_RED = 1,
 	WHITE_BLUE,
@@ -76,9 +79,13 @@ typedef struct {
 	int32_t xpos_prev;
 	int32_t ypos_prev;
 	int32_t ypos_max;
+	int32_t xwidth;
 } position_t;
 
-uint32_t read_mmaps(
+static uint32_t view = VIEW_PAGE;
+static bool tab_view = false;
+
+static uint32_t read_mmaps(
 	const char *filename,
 	map_t maps[MAX_MMAPS],
 	const uint32_t max,
@@ -131,40 +138,200 @@ uint32_t read_mmaps(
 	return n;
 }
 
-void handle_winch(int sig)
+static void handle_winch(int sig)
 {
 	(void)sig;
 
 	resized = true;
 }
 
-void show_usage(void)
+static void show_usage(void)
 {
 	printf(APP_NAME ", version " VERSION "\n\n"
 		"Usage: " APP_NAME " [options] pid\n"
 		" -h help\n");
 }
 
+static int show_pages(
+	const char *path_map,
+	const page_t *pages,
+	const int64_t npages,
+	const int64_t page_index,
+	const uint32_t page_size,
+	const int32_t xwidth,
+	const int32_t zoom)
+{
+	int32_t i;
+	int64_t tmp_index = page_index;
+	int fd;
+	map_t *mmap = pages[tmp_index].map;
+
+	if ((fd = open(path_map, O_RDONLY)) < 0)
+		return -1;
+
+	for (i = 1; i < LINES - 1; i++) {
+		uint64_t info;
+		int32_t j;
+
+		if (tmp_index >= npages) {
+			wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
+			mvwprintw(mainwin, i, 0, "---------------- ");
+		} else {
+			uint64_t addr = pages[tmp_index].addr;
+			wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
+			mvwprintw(mainwin, i, 0, "%16.16lx ", addr);
+		}
+
+		for (j = 0; j < xwidth; j++) {
+			char state = '.';
+
+			if (tmp_index >= npages) {
+				wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
+				state = '~';
+			} else {
+				uint64_t addr = pages[tmp_index].addr;
+				lseek(fd, sizeof(uint64_t) * (addr / page_size), SEEK_SET);
+				if (read(fd, &info, sizeof(info)) < 0)
+					break;
+
+				wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
+
+				if (info & ((uint64_t)1 << 63)) {
+					wattrset(mainwin, COLOR_PAIR(WHITE_YELLOW));
+					state = 'R';
+				}
+				if (info & ((uint64_t)1 << 62)) {
+					wattrset(mainwin, COLOR_PAIR(WHITE_GREEN));
+					state = 'S';
+				}
+				if (info & ((uint64_t)1 << 61)) {
+					wattrset(mainwin, COLOR_PAIR(WHITE_RED));
+					state = 'M';
+				}
+				if (info & ((uint64_t)1 << 55)) {
+					wattrset(mainwin, COLOR_PAIR(WHITE_CYAN));
+					state = 'D';
+				}
+			
+				tmp_index += zoom;
+			}
+			mvwprintw(mainwin, i, 17 + j, "%c", state);
+		}
+	}
+
+	wattrset(mainwin, A_NORMAL);
+	if (mmap && tab_view) {
+		uint64_t info;
+
+		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		mvwprintw(mainwin, 3, 4, " Page:   0x%16.16" PRIx64 "                  ", pages[tmp_index].addr);
+		mvwprintw(mainwin, 4, 4, " Map:    0x%16.16" PRIx64 "-%16.16" PRIx64 " ",
+			mmap->begin, mmap->end - 1);
+		mvwprintw(mainwin, 5, 4, " Device: %5.5s                               ", mmap->dev);
+		mvwprintw(mainwin, 6, 4, " Prot:   %4.4s                                ", mmap->attr);
+		mvwprintw(mainwin, 6, 4, " File:   %-20.20s ", basename(mmap->name));
+		lseek(fd, sizeof(uint64_t) * (pages[tmp_index].addr / page_size), SEEK_SET);
+		if (read(fd, &info, sizeof(info)) > 0) {
+		mvwprintw(mainwin, 7, 4, " Flag:   0x%16.16lx                  ", info);
+		mvwprintw(mainwin, 8, 4, "   Present in RAM:      %3s                  ", 
+			(info & ((uint64_t)1 << 63)) ? "Yes" : "No ");
+		mvwprintw(mainwin, 9, 4, "   Present in Swap:     %3s                  ", 
+			(info & ((uint64_t)1 << 62)) ? "Yes" : "No ");
+		mvwprintw(mainwin, 10, 4, "   File or Shared Anon: %3s                  ", 
+			(info & ((uint64_t)1 << 61)) ? "Yes" : "No ");
+		mvwprintw(mainwin, 11, 4, "   Soft-dirty PTE:      %3s                  ", 
+			(info & ((uint64_t)1 << 55)) ? "Yes" : "No ");
+		}
+	}
+
+	(void)close(fd);
+
+	return 0;
+}
+
+static int show_memory(
+	const char *path_mem,
+	const page_t *pages,
+	const int64_t npages,
+	const int64_t page_index,
+	int64_t data_index,
+	const uint32_t page_size,
+	const int32_t xwidth)
+{
+	int32_t i;
+	int64_t tmp_index = page_index;
+	int fd;
+	off_t addr;
+
+	if ((fd = open(path_mem, O_RDONLY)) < 0)
+		return -1;
+
+	for (i = 1; i < LINES - 1; i++) {
+		int32_t j;
+		addr = pages[tmp_index].addr + data_index;
+
+		if (tmp_index >= npages) {
+			wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
+			mvwprintw(mainwin, i, 0, "---------------- ");
+		} else {
+			wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
+			mvwprintw(mainwin, i, 0, "%16.16lx ", addr);
+		}
+		mvwprintw(mainwin, i, COLS - 3, "   ", addr);
+
+		for (j = 0; j < xwidth; j++) {
+			if (tmp_index >= npages) {
+				wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
+			} else {
+				uint8_t byte;
+				addr = pages[tmp_index].addr + data_index;
+
+				lseek(fd, addr, SEEK_SET);
+				if (read(fd, &byte, sizeof(byte)) < 0) {
+					wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
+					mvwprintw(mainwin, i, 17 + j * 3, "?? ");
+					mvwprintw(mainwin, i, 17 + (3 * xwidth) + j, "?");
+				} else {
+					wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
+					mvwprintw(mainwin, i, 17 + j * 3, "%2.2x ", byte);
+					byte &= 0x7f;
+	
+					mvwprintw(mainwin, i, 17 + (3 * xwidth) + j, "%c",
+						(byte < 32 || byte > 126) ? '.' : byte);
+				}
+			}
+			data_index++;
+			if (data_index >= page_size) {
+				data_index -= page_size;
+				tmp_index++;
+			}
+		}
+	}
+	(void)close(fd);
+
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
-	uint64_t addr = 0;
 	int64_t npages;
 	uint32_t page_size = PAGE_SIZE;
 	int64_t page_index = 0, tmp_index, prev_page_index;
+	int64_t data_index = 0;
 	bool do_run = true;
 	pid_t pid = -1;
 	char path_refs[PATH_MAX];
 	char path_map[PATH_MAX];
 	char path_mmap[PATH_MAX];
+	char path_mem[PATH_MAX];
 	map_t mmaps[MAX_MMAPS], *mmap;
 	int tick = 0;
 	int blink = 0;
-	bool tab_info = false;
 	page_t *pages;
-	uint32_t zoom = 1;
-	position_t p;
+	int32_t zoom = 1;
+	position_t position[2];
 
-	memset(&p, 0, sizeof(p));
+	memset(position, 0, sizeof(position));
 
 	for (;;) {
 		int c = getopt(argc, argv, "h");
@@ -181,7 +348,6 @@ int main(int argc, char **argv)
 	}
 
 	if (optind < argc) {
-		printf("%s\n", argv[optind]);
 		pid = strtol(argv[optind], NULL, 10);
 		if (errno) {
 			fprintf(stderr, "Invalid pid value\n");
@@ -198,10 +364,11 @@ int main(int argc, char **argv)
 		"/proc/%i/pagemap", pid);
 	snprintf(path_mmap, sizeof(path_mmap),
 		"/proc/%i/maps", pid);
+	snprintf(path_mem, sizeof(path_mmap),
+		"/proc/%i/mem", pid);
 
 
 	resized = false;
-
 	initscr();
 	start_color();
 	cbreak();
@@ -217,7 +384,6 @@ int main(int argc, char **argv)
 	init_pair(WHITE_CYAN, COLOR_WHITE, COLOR_CYAN);
 	init_pair(WHITE_GREEN, COLOR_WHITE, COLOR_GREEN);
 	init_pair(WHITE_BLACK, COLOR_WHITE, COLOR_BLACK);
-
 	init_pair(BLACK_WHITE, COLOR_BLACK, COLOR_WHITE);
 	init_pair(CYAN_BLUE, COLOR_CYAN, COLOR_BLUE);
 	init_pair(RED_BLUE, COLOR_RED, COLOR_BLUE);
@@ -231,10 +397,10 @@ int main(int argc, char **argv)
 	signal(SIGWINCH, handle_winch);
 
 	do {
-		int ch, fd;
-		int32_t i, width_step = COLS - 17;
+		int ch;
 		char curch;
-		bool eod = false;
+		position_t *p = &position[view];
+		uint64_t show_addr;
 
 		read_mmaps(path_mmap, mmaps, MAX_MMAPS, &pages, &npages);
 		if (resized) {
@@ -246,16 +412,20 @@ int main(int argc, char **argv)
 				break;
 			if (LINES < 5)
 				break;
-			width_step = COLS - 17;
 			mainwin = newwin(LINES, COLS, 0, 0);
 			resized = false;
 		}
+
+		position[VIEW_PAGE].xwidth = COLS - 17;
+		position[VIEW_MEM].xwidth = (COLS - 17) / 4;
 
 		wbkgd(mainwin, COLOR_PAIR(RED_BLUE));
 
 		tick++;
 		if (tick > 10) {
+			int fd;
 			tick = 0;
+
 			fd = open(path_refs, O_RDWR);
 			if (fd < 0)
 				break;
@@ -263,148 +433,69 @@ int main(int argc, char **argv)
 				break;
 			(void)close(fd);
 		}
-		ch = getch();
 
+		ch = getch();
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
 		mvwprintw(mainwin, LINES - 1, 0, "KEY: ");
-
 		wattrset(mainwin, COLOR_PAIR(WHITE_RED));
 		wprintw(mainwin, "A");
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
 		wprintw(mainwin, " Mapped anon/file, ");
-
 		wattrset(mainwin, COLOR_PAIR(WHITE_YELLOW));
 		wprintw(mainwin, "R");
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
 		wprintw(mainwin, " in RAM, ");
-
 		wattrset(mainwin, COLOR_PAIR(WHITE_CYAN));
 		wprintw(mainwin, "D");
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
 		wprintw(mainwin, " Dirty, ");
-
 		wattrset(mainwin, COLOR_PAIR(WHITE_CYAN));
 		wprintw(mainwin, "S");
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
 		wprintw(mainwin, " Swap, ");
-
 		wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
 		wprintw(mainwin, ".");
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
 		wprintw(mainwin, " not in RAM");
 
 		wattrset(mainwin, COLOR_PAIR(BLACK_WHITE) | A_BOLD);
-		fd = open(path_map, O_RDONLY);
-		if (fd < 0)
-			break;
 
-		tmp_index = page_index;
-		for (i = 1; i < LINES - 1; i++) {
-			int32_t j;
-			uint64_t info;
-
-			if (tmp_index >= npages) {
-				wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
-				mvwprintw(mainwin, i, 0, "---------------- ");
-			} else {
-				addr = pages[tmp_index].addr;
-				wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-				mvwprintw(mainwin, i, 0, "%16.16lx ", addr);
-			}
-
-			for (j = 0; j < width_step; j++) {
-				char state = '.';
-
-				if (tmp_index >= npages) {
-					wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
-					state = '~';
-				} else {
-					addr = pages[tmp_index].addr;
-					lseek(fd, sizeof(uint64_t) * (addr / page_size), SEEK_SET);
-					if (read(fd, &info, sizeof(info)) < 0)
-						break;
-
-					wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-
-					if (info & ((uint64_t)1 << 63)) {
-						wattrset(mainwin, COLOR_PAIR(WHITE_YELLOW));
-						state = 'R';
-					}
-					if (info & ((uint64_t)1 << 62)) {
-						wattrset(mainwin, COLOR_PAIR(WHITE_GREEN));
-						state = 'S';
-					}
-					if (info & ((uint64_t)1 << 61)) {
-						wattrset(mainwin, COLOR_PAIR(WHITE_RED));
-						state = 'M';
-					}
-					if (info & ((uint64_t)1 << 55)) {
-						wattrset(mainwin, COLOR_PAIR(WHITE_CYAN));
-						state = 'D';
-					}
-					
-					tmp_index += zoom;
-				}
-				mvwprintw(mainwin, i, 17 + j, "%c", state);
-			}
+		blink++;
+		if (view == VIEW_MEM) {
+			position_t *pc = &position[VIEW_PAGE];
+			tmp_index = page_index + (pc->xpos + (pc->ypos * pc->xwidth));
+			show_addr = pages[tmp_index].addr + data_index + (p->xpos + (p->ypos * p->xwidth));
+			show_memory(path_mem, pages, npages, tmp_index, data_index, page_size, p->xwidth);
+			wattrset(mainwin, A_BOLD | ((blink & 0x20) ? COLOR_PAIR(BLACK_WHITE) : COLOR_PAIR(WHITE_BLACK)));
+			curch = mvwinch(mainwin, p->ypos + 1, (p->xpos * 3) + 17) & A_CHARTEXT;
+			mvwprintw(mainwin, p->ypos + 1, (p->xpos * 3) + 17, "%c", curch);
+		} else {
+			tmp_index = page_index + (p->xpos + (p->ypos * p->xwidth));
+			show_addr = pages[tmp_index].addr;
+			show_pages(path_map, pages, npages, page_index, page_size, p->xwidth, zoom);
+			wattrset(mainwin, A_BOLD | ((blink & 0x20) ? COLOR_PAIR(BLACK_WHITE) : COLOR_PAIR(WHITE_BLACK)));
+			curch = mvwinch(mainwin, p->ypos + 1, p->xpos + 17) & A_CHARTEXT;
+			mvwprintw(mainwin, p->ypos + 1, p->xpos + 17, "%c", curch);
 		}
-
-		eod = false;
-		tmp_index = page_index + (p.xpos + (p.ypos * width_step));
-		if (tmp_index >= npages)
-			eod = true;
 
 		mmap = pages[tmp_index].map;
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		if (!mmap || eod) {
-			mvwprintw(mainwin, 0, 0, "Pagemon 0x---------------- Zoom x %3u ", zoom);
+		if (!mmap) {
+			mvwprintw(mainwin, 0, 0, "Pagemon 0x---------------- Zoom x %-3d ", zoom);
 			wprintw(mainwin, "---- --:-- %-20.20s", "");
 		} else {
-			mvwprintw(mainwin, 0, 0, "Pagemon 0x%16.16" PRIx64 " Zoom x %3u ",
-				pages[tmp_index].addr, zoom);
+			mvwprintw(mainwin, 0, 0, "Pagemon 0x%16.16" PRIx64 " Zoom x %-3d (%" PRIx64 ")", show_addr, zoom, tmp_index);
 			wprintw(mainwin, "%s %s %-20.20s",
-				mmap->attr, mmap->dev, mmap->name[0] == '\0' ?
-					"[Anonymous]" : basename(mmap->name));
+				mmap->attr, mmap->dev, mmap->name[0] == '\0' ?  "[Anonymous]" : basename(mmap->name));
 		}
 
 		wattrset(mainwin, A_NORMAL);
-		if (mmap && tab_info) {
-			uint64_t info;
-
-			wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-			mvwprintw(mainwin, 3, 4, " Page:   0x%16.16" PRIx64 "                  ", pages[tmp_index].addr);
-			mvwprintw(mainwin, 4, 4, " Map:    0x%16.16" PRIx64 "-%16.16" PRIx64 " ",
-				mmap->begin, mmap->end - 1);
-			mvwprintw(mainwin, 5, 4, " Device: %5.5s                               ", mmap->dev);
-			mvwprintw(mainwin, 6, 4, " Prot:   %4.4s                                ", mmap->attr);
-			mvwprintw(mainwin, 6, 4, " File:   %-20.20s ", basename(mmap->name));
-			lseek(fd, sizeof(uint64_t) * (pages[tmp_index].addr / page_size), SEEK_SET);
-			if (read(fd, &info, sizeof(info)) < 0)
-				break;
-			mvwprintw(mainwin, 7, 4, " Flag:   0x%16.16lx                  ", info);
-			mvwprintw(mainwin, 8, 4, "   Present in RAM:      %3s                  ", 
-				(info & ((uint64_t)1 << 63)) ? "Yes" : "No ");
-			mvwprintw(mainwin, 9, 4, "   Present in Swap:     %3s                  ", 
-				(info & ((uint64_t)1 << 62)) ? "Yes" : "No ");
-			mvwprintw(mainwin, 10, 4, "   File or Shared Anon: %3s                  ", 
-				(info & ((uint64_t)1 << 61)) ? "Yes" : "No ");
-			mvwprintw(mainwin, 11, 4, "   Soft-dirty PTE:      %3s                  ", 
-				(info & ((uint64_t)1 << 55)) ? "Yes" : "No ");
-		}
-		close(fd);
-
-		blink++;
-		wattrset(mainwin, A_BOLD | ((blink & 0x20) ? COLOR_PAIR(BLACK_WHITE) : COLOR_PAIR(WHITE_BLACK)));
-		curch = mvwinch(mainwin, p.ypos + 1, p.xpos + 17) & A_CHARTEXT;
-		mvwprintw(mainwin, p.ypos + 1, p.xpos + 17, "%c", curch);
-		wattrset(mainwin, A_NORMAL);
-
 		wrefresh(mainwin);
 		refresh();
 
 		prev_page_index = page_index;
-		p.xpos_prev = p.xpos;
-		p.ypos_prev = p.ypos;
+		p->xpos_prev = p->xpos;
+		p->ypos_prev = p->ypos;
 
 		switch (ch) {
 		case 27:	/* ESC */
@@ -413,72 +504,114 @@ int main(int argc, char **argv)
 			do_run = false;
 			break;
 		case '\t':
-			tab_info = !tab_info;
+			tab_view = !tab_view;
+			break;
+		case '\n':
+			view ^= 1;
+			p = &position[view];
+			blink = 0;
 			break;
 		case '+':
-			zoom++ ;
-			if (zoom > 999)
-				zoom = 999;
+		case 'z':
+			if (view == VIEW_PAGE) {
+				zoom++ ;
+				if (zoom > 999)
+					zoom = 999;
+			}
 			break;
 		case '-':
-			zoom--;
-			if (zoom < 1)
-				zoom = 1;
+		case 'Z':
+			if (view == VIEW_PAGE) {
+				zoom--;
+				if (zoom < 1)
+					zoom = 1;
+			}
 			break;
 		case KEY_DOWN:
 			blink = 0;
-			p.ypos++;
+			p->ypos++;
 			break;
 		case KEY_UP:
 			blink = 0;
-			p.ypos--;
+			p->ypos--;
 			break;
 		case KEY_LEFT:
 			blink = 0;
-			p.xpos--;
+			p->xpos--;
 			break;
 		case KEY_RIGHT:
 			blink = 0;
-			p.xpos++;
+			p->xpos++;
 			break;
 		case KEY_NPAGE:
 			blink = 0;
-			p.ypos += (LINES - 2) / 2;
+			p->ypos += (LINES - 2) / 2;
 			break;
 		case KEY_PPAGE:
 			blink = 0;
-			p.ypos -= (LINES - 2) / 2;
+			p->ypos -= (LINES - 2) / 2;
 			break;
 		}
-		p.ypos_max = (((npages - page_index) / zoom) - p.xpos) / width_step;
 
-		if (p.xpos >= width_step) {
-			p.xpos = 0;
-			p.ypos++;
+		position[VIEW_PAGE].ypos_max =
+			(((npages - page_index) / zoom) - p->xpos) / position[0].xwidth;
+		position[VIEW_MEM].ypos_max = LINES - 2;
+
+		if (p->xpos >= p->xwidth) {
+			p->xpos = 0;
+			p->ypos++;
 		}
-		if (p.xpos < 0) {
-			p.xpos = width_step - 1;
-			p.ypos--;
+		if (p->xpos < 0) {
+			p->xpos = p->xwidth - 1;
+			p->ypos--;
 		}
-		if (p.ypos > p.ypos_max)
-			p.ypos = p.ypos_max;
-		if (p.ypos > LINES - 3) {
-			page_index += zoom * width_step * (p.ypos - (LINES-3));
-			p.ypos = LINES - 3;
+
+		if (p->ypos > p->ypos_max)
+			p->ypos = p->ypos_max;
+
+		if (view == VIEW_MEM) {
+			if (p->ypos > LINES - 3) {
+				data_index += p->xwidth * (p->ypos - (LINES - 3));
+				p->ypos = LINES - 3;
+				if (data_index > page_size) {
+					data_index -= page_size;
+					page_index++;
+				}
+			}
+			if (p->ypos < 0) {
+				data_index -= p->xwidth * (-p->ypos);
+				p->ypos = 0;
+				if (data_index < 0) {
+					data_index += page_size;
+					page_index--;
+				}
+			}
+		} else {
+			data_index = 0;
+			if (p->ypos > LINES - 3) {
+				page_index += zoom * p->xwidth * (p->ypos - (LINES - 3));
+				p->ypos = LINES - 3;
+			}
+			if (p->ypos < 0) {
+				page_index -= zoom * p->xwidth * (-p->ypos);
+				p->ypos = 0;
+			}
 		}
-		if (p.ypos < 0) {
-			page_index -= zoom * width_step * (-p.ypos);
-			p.ypos = 0;
-		}
+
 		if (page_index < 0) {
-			page_index = 0;
-			p.ypos = 0;
+			page_index = 0;	
+			data_index = 0;
+			p->ypos = 0;
 		}
-		if (page_index + zoom * (p.xpos + (p.ypos * width_step)) >= npages) {
-			page_index = prev_page_index;
-			p.xpos = p.xpos_prev;
-			p.ypos = p.ypos_prev;
+		if (view == VIEW_MEM) {
+		} else {
+			if (page_index + zoom * (p->xpos + (p->ypos * p->xwidth)) >= npages) {
+				page_index = prev_page_index;
+				p->xpos = p->xpos_prev;
+				p->ypos = p->ypos_prev;
+			}
 		}
+
 		free(pages);
 		usleep(10000);
 	} while (do_run);
