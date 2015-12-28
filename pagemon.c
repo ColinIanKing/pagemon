@@ -101,7 +101,7 @@ static bool tab_view = false;
 static bool help_view = false;
 static mem_info_t mem_info;
 
-static int read_mmaps(
+static int read_maps(
 	const char *filename)
 {
 	FILE *fp;
@@ -164,29 +164,29 @@ static void show_usage(void)
 }
 
 static int show_pages(
-	const char *path_map,
+	const char *path_pagemap,
 	const int64_t page_index,
 	const uint32_t page_size,
 	const int32_t xwidth,
 	const int32_t zoom)
 {
 	int32_t i;
-	int64_t tmp_index = page_index;
+	int64_t index = page_index;
 	int fd;
-	map_t *mmap = mem_info.pages[tmp_index].map;
+	map_t *map = mem_info.pages[index].map;
 
-	if ((fd = open(path_map, O_RDONLY)) < 0)
+	if ((fd = open(path_pagemap, O_RDONLY)) < 0)
 		return ERR_NO_MAP_INFO;
 
 	for (i = 1; i < LINES - 1; i++) {
 		uint64_t info;
 		int32_t j;
 
-		if (tmp_index >= mem_info.npages) {
+		if (index >= mem_info.npages) {
 			wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
 			mvwprintw(mainwin, i, 0, "---------------- ");
 		} else {
-			uint64_t addr = mem_info.pages[tmp_index].addr;
+			uint64_t addr = mem_info.pages[index].addr;
 			wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
 			mvwprintw(mainwin, i, 0, "%16.16lx ", addr);
 		}
@@ -194,11 +194,11 @@ static int show_pages(
 		for (j = 0; j < xwidth; j++) {
 			char state = '.';
 
-			if (tmp_index >= mem_info.npages) {
+			if (index >= mem_info.npages) {
 				wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
 				state = '~';
 			} else {
-				uint64_t addr = mem_info.pages[tmp_index].addr;
+				uint64_t addr = mem_info.pages[index].addr;
 				lseek(fd, sizeof(uint64_t) * (addr / page_size), SEEK_SET);
 				if (read(fd, &info, sizeof(info)) < 0)
 					break;
@@ -222,25 +222,25 @@ static int show_pages(
 					state = 'D';
 				}
 			
-				tmp_index += zoom;
+				index += zoom;
 			}
 			mvwprintw(mainwin, i, 17 + j, "%c", state);
 		}
 	}
 
 	wattrset(mainwin, A_NORMAL);
-	if (mmap && tab_view) {
+	if (map && tab_view) {
 		uint64_t info;
 
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
 		mvwprintw(mainwin, 3, 4, " Page:   0x%16.16" PRIx64 "                  ",
-			mem_info.pages[tmp_index].addr);
+			mem_info.pages[index].addr);
 		mvwprintw(mainwin, 4, 4, " Map:    0x%16.16" PRIx64 "-%16.16" PRIx64 " ",
-			mmap->begin, mmap->end - 1);
-		mvwprintw(mainwin, 5, 4, " Device: %5.5s                               ", mmap->dev);
-		mvwprintw(mainwin, 6, 4, " Prot:   %4.4s                                ", mmap->attr);
-		mvwprintw(mainwin, 6, 4, " File:   %-20.20s ", basename(mmap->name));
-		lseek(fd, sizeof(uint64_t) * (mem_info.pages[tmp_index].addr / page_size), SEEK_SET);
+			map->begin, map->end - 1);
+		mvwprintw(mainwin, 5, 4, " Device: %5.5s                               ", map->dev);
+		mvwprintw(mainwin, 6, 4, " Prot:   %4.4s                                ", map->attr);
+		mvwprintw(mainwin, 6, 4, " File:   %-20.20s ", basename(map->name));
+		lseek(fd, sizeof(uint64_t) * (mem_info.pages[index].addr / page_size), SEEK_SET);
 		if (read(fd, &info, sizeof(info)) > 0) {
 		mvwprintw(mainwin, 7, 4, " Flag:   0x%16.16lx                  ", info);
 		mvwprintw(mainwin, 8, 4, "   Present in RAM:      %3s                  ", 
@@ -267,7 +267,7 @@ static int show_memory(
 	const int32_t xwidth)
 {
 	int32_t i;
-	int64_t tmp_index = page_index;
+	int64_t index = page_index;
 	int fd;
 	off_t addr;
 
@@ -276,9 +276,9 @@ static int show_memory(
 
 	for (i = 1; i < LINES - 1; i++) {
 		int32_t j;
-		addr = mem_info.pages[tmp_index].addr + data_index;
+		addr = mem_info.pages[index].addr + data_index;
 
-		if (tmp_index >= mem_info.npages) {
+		if (index >= mem_info.npages) {
 			wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
 			mvwprintw(mainwin, i, 0, "---------------- ");
 		} else {
@@ -288,11 +288,11 @@ static int show_memory(
 		mvwprintw(mainwin, i, COLS - 3, "   ", addr);
 
 		for (j = 0; j < xwidth; j++) {
-			if (tmp_index >= mem_info.npages) {
+			if (index >= mem_info.npages) {
 				wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
 			} else {
 				uint8_t byte;
-				addr = mem_info.pages[tmp_index].addr + data_index;
+				addr = mem_info.pages[index].addr + data_index;
 
 				lseek(fd, addr, SEEK_SET);
 				if (read(fd, &byte, sizeof(byte)) < 0) {
@@ -311,7 +311,7 @@ static int show_memory(
 			data_index++;
 			if (data_index >= page_size) {
 				data_index -= page_size;
-				tmp_index++;
+				index++;
 			}
 		}
 	}
@@ -328,10 +328,10 @@ int main(int argc, char **argv)
 	bool do_run = true;
 	pid_t pid = -1;
 	char path_refs[PATH_MAX];
-	char path_map[PATH_MAX];
-	char path_mmap[PATH_MAX];
+	char path_pagemap[PATH_MAX];
+	char path_maps[PATH_MAX];
 	char path_mem[PATH_MAX];
-	map_t *mmap;
+	map_t *map;
 	int tick = 0;
 	int blink = 0;
 	int rc = OK;
@@ -367,11 +367,11 @@ int main(int argc, char **argv)
 
 	snprintf(path_refs, sizeof(path_refs),
 		"/proc/%i/clear_refs", pid);
-	snprintf(path_map, sizeof(path_map),
+	snprintf(path_pagemap, sizeof(path_pagemap),
 		"/proc/%i/pagemap", pid);
-	snprintf(path_mmap, sizeof(path_mmap),
+	snprintf(path_maps, sizeof(path_maps),
 		"/proc/%i/maps", pid);
-	snprintf(path_mem, sizeof(path_mmap),
+	snprintf(path_mem, sizeof(path_mem),
 		"/proc/%i/mem", pid);
 
 	resized = false;
@@ -433,7 +433,7 @@ int main(int argc, char **argv)
 		}
 
 		if ((view == VIEW_PAGE) &&
-		    ((rc = read_mmaps(path_mmap)) < 0))
+		    ((rc = read_maps(path_maps)) < 0))
 			break;
 
 		position[VIEW_PAGE].xwidth = COLS - 17;
@@ -484,16 +484,16 @@ int main(int argc, char **argv)
 		if (view == VIEW_MEM) {
 			position_t *pc = &position[VIEW_PAGE];
 			uint32_t index = page_index + (pc->xpos + (pc->ypos * pc->xwidth));
-			mmap = mem_info.pages[index].map;
+			map = mem_info.pages[index].map;
 			show_addr = mem_info.pages[index].addr + data_index + (p->xpos + (p->ypos * p->xwidth));
 			if (show_memory(path_mem, index, data_index, page_size, p->xwidth) < 0)
 				break;
 			curxpos = (p->xpos * 3) + 17;
 		} else {
 			uint32_t index = page_index + (p->xpos + (p->ypos * p->xwidth));
-			mmap = mem_info.pages[index].map;
+			map = mem_info.pages[index].map;
 			show_addr = mem_info.pages[index].addr;
-			show_pages(path_map, page_index, page_size, p->xwidth, zoom);
+			show_pages(path_pagemap, page_index, page_size, p->xwidth, zoom);
 			curxpos = p->xpos + 17;
 		}
 		wattrset(mainwin, A_BOLD | ((blink & 0x20) ? COLOR_PAIR(BLACK_WHITE) : COLOR_PAIR(WHITE_BLACK)));
@@ -501,13 +501,13 @@ int main(int argc, char **argv)
 		mvwprintw(mainwin, p->ypos + 1, curxpos, "%c", curch);
 
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		if (!mmap) {
+		if (!map) {
 			mvwprintw(mainwin, 0, 0, "Pagemon 0x---------------- Zoom x %-3d ", zoom);
 			wprintw(mainwin, "---- --:-- %-20.20s", "[Not Mapped]");
 		} else {
 			mvwprintw(mainwin, 0, 0, "Pagemon 0x%16.16" PRIx64 " Zoom x %-3d ", show_addr, zoom);
 			wprintw(mainwin, "%s %s %-20.20s",
-				mmap->attr, mmap->dev, mmap->name[0] == '\0' ?  "[Anonymous]" : basename(mmap->name));
+				map->attr, map->dev, map->name[0] == '\0' ?  "[Anonymous]" : basename(map->name));
 		}
 		if (help_view) {
 			wattrset(mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
