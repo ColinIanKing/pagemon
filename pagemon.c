@@ -98,6 +98,7 @@ typedef struct {
 
 static uint32_t view = VIEW_PAGE;
 static bool tab_view = false;
+static bool help_view = false;
 static mem_info_t mem_info;
 
 static int read_mmaps(
@@ -421,7 +422,7 @@ int main(int argc, char **argv)
 			resized = false;
 		}
 
-		if ((COLS < 80) || (LINES < 10)) {
+		if ((COLS < 80) || (LINES < 20)) {
 			wbkgd(mainwin, COLOR_PAIR(RED_BLUE));
 			wattrset(mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
 			mvwprintw(mainwin, LINES / 2, (COLS / 2) - 10, "[ WINDOW TOO SMALL ]");
@@ -508,6 +509,21 @@ int main(int argc, char **argv)
 			wprintw(mainwin, "%s %s %-20.20s",
 				mmap->attr, mmap->dev, mmap->name[0] == '\0' ?  "[Anonymous]" : basename(mmap->name));
 		}
+		if (help_view) {
+			wattrset(mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
+			int x = (COLS - 40) / 2;
+			int y = (LINES - 10) / 2;
+			mvwprintw(mainwin, y + 0, x, " HELP (press ? or h to toggle on/off)  ");
+			mvwprintw(mainwin, y + 1, x, "                                       ");
+			mvwprintw(mainwin, y + 2, x, " Esc or q   quit                       ");
+			mvwprintw(mainwin, y + 3, x, " Tab        Toggle page information    ");
+			mvwprintw(mainwin, y + 4, x, " Enter      Toggle map/memory views    ");
+			mvwprintw(mainwin, y + 5, x, " + or z     Zoom in memory map         ");
+			mvwprintw(mainwin, y + 6, x, " - or Z     Zoom out memory map        ");
+			mvwprintw(mainwin, y + 7, x, " PgUp       Scroll up 1/2 page         ");
+			mvwprintw(mainwin, y + 8, x, " PgDown     Scroll Down1/2 page        ");
+			mvwprintw(mainwin, y + 9, x, " Cursor keys move Up/Down/Left/Right   ");
+		}
 
 		wrefresh(mainwin);
 		refresh();
@@ -524,6 +540,10 @@ int main(int argc, char **argv)
 			break;
 		case '\t':
 			tab_view = !tab_view;
+			break;
+		case '?':
+		case 'h':
+			help_view = !help_view;
 			break;
 		case '\n':
 			view ^= 1;
