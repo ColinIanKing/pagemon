@@ -484,7 +484,7 @@ int main(int argc, char **argv)
 			mvwprintw(mainwin, 0, 0, "Pagemon 0x---------------- Zoom x %-3d ", zoom);
 			wprintw(mainwin, "---- --:-- %-20.20s", "");
 		} else {
-			mvwprintw(mainwin, 0, 0, "Pagemon 0x%16.16" PRIx64 " Zoom x %-3d (%" PRIx64 ")", show_addr, zoom, tmp_index);
+			mvwprintw(mainwin, 0, 0, "Pagemon 0x%16.16" PRIx64 " Zoom x %-3d ", show_addr, zoom);
 			wprintw(mainwin, "%s %s %-20.20s",
 				mmap->attr, mmap->dev, mmap->name[0] == '\0' ?  "[Anonymous]" : basename(mmap->name));
 		}
