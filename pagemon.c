@@ -45,6 +45,7 @@ static bool resized;
 #define OK		(0)
 #define ERR_NO_MAP_INFO	(-1)
 #define ERR_NO_MEM_INFO	(-2)
+#define ERR_SMALL_WIN	(-3)
 
 enum {
 	WHITE_RED = 1,
@@ -407,21 +408,32 @@ int main(int argc, char **argv)
 		uint64_t show_addr;
 		int32_t curxpos;
 
-		if ((view == VIEW_PAGE) && ((rc = read_mmaps(path_mmap)) < 0))
-			break;
-
 		if (resized) {
 			delwin(mainwin);
 			endwin();
 			refresh();
 			clear();
-			if (COLS < 18)
+			if ((COLS < 30) || (LINES < 5)) {
+				rc = ERR_SMALL_WIN;
 				break;
-			if (LINES < 5)
-				break;
+			}
 			mainwin = newwin(LINES, COLS, 0, 0);
 			resized = false;
 		}
+
+		if ((COLS < 80) || (LINES < 10)) {
+			wbkgd(mainwin, COLOR_PAIR(RED_BLUE));
+			wattrset(mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
+			mvwprintw(mainwin, LINES / 2, (COLS / 2) - 10, "[ WINDOW TOO SMALL ]");
+			wrefresh(mainwin);
+			refresh();
+			usleep(10000);
+			continue;	
+		}
+
+		if ((view == VIEW_PAGE) &&
+		    ((rc = read_mmaps(path_mmap)) < 0))
+			break;
 
 		position[VIEW_PAGE].xwidth = COLS - 17;
 		position[VIEW_MEM].xwidth = (COLS - 17) / 4;
@@ -497,7 +509,6 @@ int main(int argc, char **argv)
 				mmap->attr, mmap->dev, mmap->name[0] == '\0' ?  "[Anonymous]" : basename(mmap->name));
 		}
 
-		wattrset(mainwin, A_NORMAL);
 		wrefresh(mainwin);
 		refresh();
 
@@ -573,7 +584,7 @@ int main(int argc, char **argv)
 			p->xpos = p->xwidth - 1;
 			p->ypos--;
 		}
-
+		if (p->ypos > p->ypos_max)
 			p->ypos = p->ypos_max;
 
 		if (view == VIEW_MEM) {
@@ -637,6 +648,9 @@ int main(int argc, char **argv)
 		break;
 	case ERR_NO_MEM_INFO:
 		fprintf(stderr, "Cannot access memory for PID %d\n", pid);
+		break;
+	case ERR_SMALL_WIN:
+		fprintf(stderr, "Window too small\n");
 		break;
 	default:
 		break;
