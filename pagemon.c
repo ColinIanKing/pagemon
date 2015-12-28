@@ -42,6 +42,10 @@ static bool resized;
 #define VIEW_PAGE	(0)
 #define VIEW_MEM	(1)
 
+#define OK		(0)
+#define ERR_NO_MAP_INFO	(-1)
+#define ERR_NO_MEM_INFO	(-2)
+
 enum {
 	WHITE_RED = 1,
 	WHITE_BLUE,
@@ -95,7 +99,7 @@ static uint32_t view = VIEW_PAGE;
 static bool tab_view = false;
 static mem_info_t mem_info;
 
-static void read_mmaps(
+static int read_mmaps(
 	const char *filename)
 {
 	FILE *fp;
@@ -107,7 +111,7 @@ static void read_mmaps(
 
 	fp = fopen(filename, "r");
 	if (fp == NULL)
-		return;
+		return ERR_NO_MAP_INFO;
 
 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
 		mem_info.maps[n].name[0] = '\0';
@@ -140,6 +144,7 @@ static void read_mmaps(
 			page++;
 		}
 	}
+	return (n == 0) ? ERR_NO_MAP_INFO : OK;
 }
 
 static void handle_winch(int sig)
@@ -169,7 +174,7 @@ static int show_pages(
 	map_t *mmap = mem_info.pages[tmp_index].map;
 
 	if ((fd = open(path_map, O_RDONLY)) < 0)
-		return -1;
+		return ERR_NO_MAP_INFO;
 
 	for (i = 1; i < LINES - 1; i++) {
 		uint64_t info;
@@ -265,7 +270,7 @@ static int show_memory(
 	off_t addr;
 
 	if ((fd = open(path_mem, O_RDONLY)) < 0)
-		return -1;
+		return ERR_NO_MEM_INFO;
 
 	for (i = 1; i < LINES - 1; i++) {
 		int32_t j;
@@ -327,6 +332,7 @@ int main(int argc, char **argv)
 	map_t *mmap;
 	int tick = 0;
 	int blink = 0;
+	int rc = OK;
 	int32_t zoom = 1;
 	position_t position[2];
 
@@ -401,8 +407,8 @@ int main(int argc, char **argv)
 		uint64_t show_addr;
 		int32_t curxpos;
 
-		if (view == VIEW_PAGE)
-			read_mmaps(path_mmap);
+		if ((view == VIEW_PAGE) && ((rc = read_mmaps(path_mmap)) < 0))
+			break;
 
 		if (resized) {
 			delwin(mainwin);
@@ -424,15 +430,15 @@ int main(int argc, char **argv)
 
 		tick++;
 		if (tick > 10) {
-			int fd;
+			int fd, ret;
 			tick = 0;
 
 			fd = open(path_refs, O_RDWR);
-			if (fd < 0)
-				break;
-			if (write(fd, "4", 1) < 0)
-				break;
-			(void)close(fd);
+			if (fd > -1) {
+				ret = write(fd, "4", 1);
+				(void)ret;
+				(void)close(fd);
+			}
 		}
 
 		ch = getch();
@@ -467,7 +473,8 @@ int main(int argc, char **argv)
 			uint32_t index = page_index + (pc->xpos + (pc->ypos * pc->xwidth));
 			mmap = mem_info.pages[index].map;
 			show_addr = mem_info.pages[index].addr + data_index + (p->xpos + (p->ypos * p->xwidth));
-			show_memory(path_mem, index, data_index, page_size, p->xwidth);
+			if (show_memory(path_mem, index, data_index, page_size, p->xwidth) < 0)
+				break;
 			curxpos = (p->xpos * 3) + 17;
 		} else {
 			uint32_t index = page_index + (p->xpos + (p->ypos * p->xwidth));
@@ -567,7 +574,6 @@ int main(int argc, char **argv)
 			p->ypos--;
 		}
 
-		if (p->ypos > p->ypos_max)
 			p->ypos = p->ypos_max;
 
 		if (view == VIEW_MEM) {
@@ -622,5 +628,19 @@ int main(int argc, char **argv)
 	} while (do_run);
 
 	endwin();
+
+	switch (rc) {
+	case OK:
+		break;
+	case ERR_NO_MAP_INFO:
+		fprintf(stderr, "Cannot access memory maps for PID %d\n", pid);
+		break;
+	case ERR_NO_MEM_INFO:
+		fprintf(stderr, "Cannot access memory for PID %d\n", pid);
+		break;
+	default:
+		break;
+	}
+
 	exit(EXIT_SUCCESS);
 }
