@@ -13,7 +13,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Copyright (C) Colin Ian King 
+ * Copyright (C) Colin Ian King
  * colin.i.king@gmail.com
  */
 #include <stdio.h>
@@ -35,17 +35,23 @@
 WINDOW *mainwin;
 static bool resized;
 
-#define APP_NAME	"pagemon"
-#define MAX_MMAPS	(65536)
-#define PAGE_SIZE	(4096)
+#define APP_NAME		"pagemon"
+#define MAX_MMAPS		(65536)
+#define PAGE_SIZE		(4096)
 
-#define VIEW_PAGE	(0)
-#define VIEW_MEM	(1)
+#define VIEW_PAGE		(0)
+#define VIEW_MEM		(1)
 
-#define OK		(0)
-#define ERR_NO_MAP_INFO	(-1)
-#define ERR_NO_MEM_INFO	(-2)
-#define ERR_SMALL_WIN	(-3)
+#define OK			(0)
+#define ERR_NO_MAP_INFO		(-1)
+#define ERR_NO_MEM_INFO		(-2)
+#define ERR_SMALL_WIN		(-3)
+
+#define	PAGE_PTE_SOFT_DIRTY	(1ULL << 55)
+#define	PAGE_EXCLUSIVE_MAPPED	(1ULL << 56)
+#define PAGE_FILE_SHARED_ANON	(1ULL << 61)
+#define PAGE_SWAPPED		(1ULL << 62)
+#define PAGE_PRESENT		(1ULL << 63)
 
 enum {
 	WHITE_RED = 1,
@@ -205,19 +211,19 @@ static int show_pages(
 
 				wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
 
-				if (info & ((uint64_t)1 << 63)) {
+				if (info & PAGE_PRESENT) {
 					wattrset(mainwin, COLOR_PAIR(WHITE_YELLOW));
-					state = 'R';
+					state = 'P';
 				}
-				if (info & ((uint64_t)1 << 62)) {
+				if (info & PAGE_SWAPPED) {
 					wattrset(mainwin, COLOR_PAIR(WHITE_GREEN));
 					state = 'S';
 				}
-				if (info & ((uint64_t)1 << 61)) {
+				if (info & PAGE_FILE_SHARED_ANON) {
 					wattrset(mainwin, COLOR_PAIR(WHITE_RED));
 					state = 'M';
 				}
-				if (info & ((uint64_t)1 << 55)) {
+				if (info & PAGE_PTE_SOFT_DIRTY) {
 					wattrset(mainwin, COLOR_PAIR(WHITE_CYAN));
 					state = 'D';
 				}
@@ -243,14 +249,26 @@ static int show_pages(
 		lseek(fd, sizeof(uint64_t) * (mem_info.pages[index].addr / page_size), SEEK_SET);
 		if (read(fd, &info, sizeof(info)) > 0) {
 		mvwprintw(mainwin, 7, 4, " Flag:   0x%16.16lx                  ", info);
-		mvwprintw(mainwin, 8, 4, "   Present in RAM:      %3s                  ", 
-			(info & ((uint64_t)1 << 63)) ? "Yes" : "No ");
-		mvwprintw(mainwin, 9, 4, "   Present in Swap:     %3s                  ", 
-			(info & ((uint64_t)1 << 62)) ? "Yes" : "No ");
-		mvwprintw(mainwin, 10, 4, "   File or Shared Anon: %3s                  ", 
-			(info & ((uint64_t)1 << 61)) ? "Yes" : "No ");
-		mvwprintw(mainwin, 11, 4, "   Soft-dirty PTE:      %3s                  ", 
-			(info & ((uint64_t)1 << 55)) ? "Yes" : "No ");
+		if (info & PAGE_SWAPPED) {
+			mvwprintw(mainwin, 8, 4, "   Swap Type:           0x%2.2x                 ",
+				info & 0x1f);
+			mvwprintw(mainwin, 9, 4, "   Swap Offset:         0x%16.16lx   ",
+				(info & 0x00ffffffffffffff) >> 5);
+		} else {
+			mvwprintw(mainwin, 8, 4, "                                             ");
+			mvwprintw(mainwin, 9, 4, "   Page Frame Number:   0x%16.16lx   ",
+				info & 0x00ffffffffffffff);
+		}
+		mvwprintw(mainwin, 10, 4, "   Soft-dirty PTE:      %3s                  ",
+			(info & PAGE_PTE_SOFT_DIRTY) ? "Yes" : "No ");
+		mvwprintw(mainwin, 11, 4, "   Exlusively Mapped:   %3s                  ",
+			(info & PAGE_EXCLUSIVE_MAPPED) ? "Yes" : "No ");
+		mvwprintw(mainwin, 12, 4, "   File or Shared Anon: %3s                  ",
+			(info & PAGE_FILE_SHARED_ANON) ? "Yes" : "No ");
+		mvwprintw(mainwin, 13, 4, "   Present in Swap:     %3s                  ",
+			(info & PAGE_SWAPPED) ? "Yes" : "No ");
+		mvwprintw(mainwin, 14, 4, "   Present in RAM:      %3s                  ",
+			(info & PAGE_PRESENT) ? "Yes" : "No ");
 		}
 	}
 
@@ -413,12 +431,12 @@ int main(int argc, char **argv)
 			delwin(mainwin);
 			endwin();
 			refresh();
-			clear();
 			if ((COLS < 30) || (LINES < 5)) {
 				rc = ERR_SMALL_WIN;
 				break;
 			}
 			mainwin = newwin(LINES, COLS, 0, 0);
+			wbkgd(mainwin, COLOR_PAIR(RED_BLUE));
 			resized = false;
 		}
 
@@ -462,14 +480,14 @@ int main(int argc, char **argv)
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
 		wprintw(mainwin, " Mapped anon/file, ");
 		wattrset(mainwin, COLOR_PAIR(WHITE_YELLOW));
-		wprintw(mainwin, "R");
+		wprintw(mainwin, "P");
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
-		wprintw(mainwin, " in RAM, ");
+		wprintw(mainwin, " Present in RAM, ");
 		wattrset(mainwin, COLOR_PAIR(WHITE_CYAN));
 		wprintw(mainwin, "D");
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
 		wprintw(mainwin, " Dirty, ");
-		wattrset(mainwin, COLOR_PAIR(WHITE_CYAN));
+		wattrset(mainwin, COLOR_PAIR(WHITE_GREEN));
 		wprintw(mainwin, "S");
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
 		wprintw(mainwin, " Swap, ");
