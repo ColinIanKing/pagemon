@@ -1,0 +1,12 @@
+pagemon
+
+pagemon is an interactive memory/page monitoring tool allowing one to browse
+the memory map of an active running process on Linux.
+
+To be able access a process memory this tool needs to be run as root.
+
+Requirements:
+	ncurses development library
+	panel development library
+
+Copyright (C) Colin Ian King, 2015
