@@ -522,7 +522,7 @@ static inline void show_help(void)
 	mvwprintw(mainwin, y + 6,  x,
 		" - or Z     Zoom out memory map            ");
 	mvwprintw(mainwin, y + 7,  x,
-		" R          Read pages (swap in all pages) ");
+		" R or r     Read pages (swap in all pages) ");
 	mvwprintw(mainwin, y + 8,  x,
 		" PgUp       Scroll up 1/2 page             ");
 	mvwprintw(mainwin, y + 9,  x,
@@ -807,6 +807,7 @@ int main(int argc, char **argv)
 			/* Toggle Help */
 			help_view = !help_view;
 			break;
+		case 'r':
 		case 'R':
 			read_all_pages(path_mem);
 			break;
