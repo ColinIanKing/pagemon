@@ -97,6 +97,8 @@ typedef struct {
 
 	page_t *pages;			/* Pages */
 	int64_t npages;			/* Number of pages */
+
+	uint64_t last_addr;		/* Last address */
 } mem_info_t;
 
 typedef struct {
@@ -124,6 +126,7 @@ static int read_maps(const char *path_maps)
 	uint32_t i, j, n = 0;
 	char buffer[4096];
 	page_t *page;
+	uint64_t last_addr = 0;
 
 	memset(&mem_info, 0, sizeof(mem_info));
 
@@ -140,6 +143,8 @@ static int read_maps(const char *path_maps)
 			mem_info.maps[n].dev,
 			mem_info.maps[n].name);
 
+		if (last_addr < mem_info.maps[n].end)
+			last_addr = mem_info.maps[n].end;
 		mem_info.npages += (mem_info.maps[n].end -
 				    mem_info.maps[n].begin) / PAGE_SIZE;
 		n++;
@@ -150,6 +155,7 @@ static int read_maps(const char *path_maps)
 
 	mem_info.nmaps = n;
 	mem_info.pages = page = calloc(mem_info.npages, sizeof(page_t));
+	mem_info.last_addr = last_addr;
 
 	for (i = 0; i < mem_info.nmaps; i++) {
 		uint64_t count = (mem_info.maps[i].end -
@@ -517,7 +523,7 @@ int main(int argc, char **argv)
 {
 	uint32_t page_size = PAGE_SIZE;
 	int64_t page_index = 0, prev_page_index;
-	int64_t data_index = 0;
+	int64_t data_index = 0, prev_data_index;
 	bool do_run = true;
 	pid_t pid = -1;
 	char path_refs[PATH_MAX];
@@ -709,10 +715,10 @@ int main(int argc, char **argv)
 
 		blink++;
 		if (view == VIEW_MEM) {
+			int32_t curxpos = (p->xpos * 3) + 17;
 			position_t *pc = &position[VIEW_PAGE];
 			uint32_t cursor_index = page_index +
 				(pc->xpos + (pc->ypos * pc->xwidth));
-			int32_t curxpos = (p->xpos * 3) + 17;
 
 			map = mem_info.pages[cursor_index].map;
 			show_addr = mem_info.pages[cursor_index].addr +
@@ -734,8 +740,9 @@ int main(int argc, char **argv)
 			curch = mvwinch(mainwin, p->ypos + 1, curxpos) & A_CHARTEXT;
 			mvwprintw(mainwin, p->ypos + 1, curxpos, "%c", curch);
 		} else {
-			uint32_t cursor_index = page_index + (p->xpos + (p->ypos * p->xwidth));
 			int32_t curxpos = p->xpos + 17;
+			uint32_t cursor_index = page_index +
+				(p->xpos + (p->ypos * p->xwidth));
 
 			map = mem_info.pages[cursor_index].map;
 			show_addr = mem_info.pages[cursor_index].addr;
@@ -766,10 +773,11 @@ int main(int argc, char **argv)
 					"[Anonymous]" : basename(map->name));
 		}
 
-		wrefresh(mainwin);
-		refresh();
+		//wrefresh(mainwin);
+		//refresh();
 
 		prev_page_index = page_index;
+		prev_data_index = data_index;
 		p->xpos_prev = p->xpos;
 		p->ypos_prev = p->ypos;
 
@@ -818,25 +826,37 @@ int main(int argc, char **argv)
 			break;
 		case KEY_DOWN:
 			blink = 0;
+			if (view == VIEW_PAGE)
+				data_index = 0;
 			p->ypos++;
 			break;
 		case KEY_UP:
 			blink = 0;
+			if (view == VIEW_PAGE)
+				data_index = 0;
 			p->ypos--;
 			break;
 		case KEY_LEFT:
 			blink = 0;
+			if (view == VIEW_PAGE)
+				data_index = 0;
 			p->xpos--;
 			break;
 		case KEY_RIGHT:
 			blink = 0;
+			if (view == VIEW_PAGE)
+				data_index = 0;
 			p->xpos++;
 			break;
 		case KEY_NPAGE:
+			if (view == VIEW_PAGE)
+				data_index = 0;
 			blink = 0;
 			p->ypos += (LINES - 2) / 2;
 			break;
 		case KEY_PPAGE:
+			if (view == VIEW_PAGE)
+				data_index = 0;
 			blink = 0;
 			p->ypos -= (LINES - 2) / 2;
 			break;
@@ -863,7 +883,7 @@ int main(int argc, char **argv)
 				data_index += p->xwidth *
 					(p->ypos - (LINES - 3));
 				p->ypos = LINES - 3;
-				if (data_index > page_size) {
+				if (data_index >= page_size) {
 					data_index -= page_size;
 					page_index++;
 				}
@@ -877,7 +897,6 @@ int main(int argc, char **argv)
 				}
 			}
 		} else {
-			data_index = 0;
 			if (p->ypos > LINES - 3) {
 				page_index += zoom * p->xwidth *
 					(p->ypos - (LINES - 3));
@@ -889,12 +908,37 @@ int main(int argc, char **argv)
 			}
 		}
 
+		wattrset(mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
+		mvwprintw(mainwin, 10, 1,
+			"show_addr %p, mem_info.last_addr %p",
+			(void *)show_addr,
+			(void *)mem_info.last_addr);
+		mvwprintw(mainwin, 11, 1,
+			"page_index %p, prev_page_index %p",
+			(void *)page_index,
+			(void *)prev_page_index);
+		mvwprintw(mainwin, 12, 1,
+			"data_index %p, prev_data_index %p",
+			(void *)data_index,
+			(void *)prev_data_index);
+
 		if (page_index < 0) {
 			page_index = 0;	
 			data_index = 0;
 			p->ypos = 0;
 		}
 		if (view == VIEW_MEM) {
+			position_t *pc = &position[VIEW_PAGE];
+			uint32_t cursor_index = page_index +
+				(pc->xpos + (pc->ypos * pc->xwidth));
+			uint64_t addr = mem_info.pages[cursor_index].addr +
+				data_index + (p->xpos + (p->ypos * p->xwidth));
+			if (addr >= mem_info.last_addr) {
+				page_index = prev_page_index;
+				data_index = prev_data_index;
+				p->xpos = p->xpos_prev;
+				p->ypos = p->ypos_prev;
+			}
 		} else {
 			if (page_index + zoom * (p->xpos + (p->ypos * p->xwidth)) >= mem_info.npages) {
 				page_index = prev_page_index;
@@ -907,6 +951,8 @@ int main(int argc, char **argv)
 			free(mem_info.pages);
 			mem_info.npages = 0;
 		}
+		wrefresh(mainwin);
+		refresh();
 
 		usleep(udelay);
 	} while (do_run);
