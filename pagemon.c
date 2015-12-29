@@ -109,8 +109,11 @@ static bool tab_view = false;
 static bool help_view = false;
 static mem_info_t mem_info;
 
-static int read_maps(
-	const char *filename)
+/*
+ *  read_maps()
+ *	read memory maps for a specifc process
+ */
+static int read_maps(const char *path_maps)
 {
 	FILE *fp;
 	uint32_t i, j, n = 0;
@@ -119,7 +122,7 @@ static int read_maps(
 
 	memset(&mem_info, 0, sizeof(mem_info));
 
-	fp = fopen(filename, "r");
+	fp = fopen(path_maps, "r");
 	if (fp == NULL)
 		return ERR_NO_MAP_INFO;
 
@@ -157,6 +160,10 @@ static int read_maps(
 	return (n == 0) ? ERR_NO_MAP_INFO : OK;
 }
 
+/*
+ *  handle_winch()
+ *	handle SIGWINCH, flag a window resize
+ */
 static void handle_winch(int sig)
 {
 	(void)sig;
@@ -164,6 +171,10 @@ static void handle_winch(int sig)
 	resized = true;
 }
 
+/*
+ *  show_usage()
+ *	mini help info
+ */
 static void show_usage(void)
 {
 	printf(APP_NAME ", version " VERSION "\n\n"
@@ -171,6 +182,10 @@ static void show_usage(void)
 		" -h help\n");
 }
 
+/*
+ *  show_pages()
+ *	show page mapping
+ */
 static int show_pages(
 	const char *path_pagemap,
 	const int64_t page_index,
@@ -279,6 +294,10 @@ static int show_pages(
 	return 0;
 }
 
+/*
+ *  show_memory()
+ *	show memory contents
+ */
 static int show_memory(
 	const char *path_mem,
 	const int64_t page_index,
@@ -342,6 +361,59 @@ static int show_memory(
 	(void)close(fd);
 
 	return 0;
+}
+
+/*
+ *  show_key()
+ *	show key for mapping info
+ */
+static inline void show_key(void)
+{
+	wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+	mvwprintw(mainwin, LINES - 1, 0, "KEY: ");
+	wattrset(mainwin, COLOR_PAIR(WHITE_RED));
+	wprintw(mainwin, "A");
+	wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+	wprintw(mainwin, " Mapped anon/file, ");
+	wattrset(mainwin, COLOR_PAIR(WHITE_YELLOW));
+	wprintw(mainwin, "P");
+	wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+	wprintw(mainwin, " Present in RAM, ");
+	wattrset(mainwin, COLOR_PAIR(WHITE_CYAN));
+	wprintw(mainwin, "D");
+	wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+	wprintw(mainwin, " Dirty, ");
+	wattrset(mainwin, COLOR_PAIR(WHITE_GREEN));
+	wprintw(mainwin, "S");
+	wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+	wprintw(mainwin, " Swap, ");
+	wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
+	wprintw(mainwin, ".");
+	wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+	wprintw(mainwin, " not in RAM");
+	wattrset(mainwin, COLOR_PAIR(BLACK_WHITE) | A_BOLD);
+}
+
+/*
+ *  show_help()
+ *	show pop-up help info
+ */
+static inline void show_help(void)
+{
+	const int x = (COLS - 40) / 2;
+	const int y = (LINES - 10) / 2;
+
+	wattrset(mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
+	mvwprintw(mainwin, y + 0, x, " HELP (press ? or h to toggle on/off)  ");
+	mvwprintw(mainwin, y + 1, x, "                                       ");
+	mvwprintw(mainwin, y + 2, x, " Esc or q   quit                       ");
+	mvwprintw(mainwin, y + 3, x, " Tab        Toggle page information    ");
+	mvwprintw(mainwin, y + 4, x, " Enter      Toggle map/memory views    ");
+	mvwprintw(mainwin, y + 5, x, " + or z     Zoom in memory map         ");
+	mvwprintw(mainwin, y + 6, x, " - or Z     Zoom out memory map        ");
+	mvwprintw(mainwin, y + 7, x, " PgUp       Scroll up 1/2 page         ");
+	mvwprintw(mainwin, y + 8, x, " PgDown     Scroll Down1/2 page        ");
+	mvwprintw(mainwin, y + 9, x, " Cursor keys move Up/Down/Left/Right   ");
 }
 
 int main(int argc, char **argv)
@@ -435,11 +507,17 @@ int main(int argc, char **argv)
 		uint64_t show_addr;
 		int32_t curxpos;
 
+		/*
+		 *  SIGWINCH window resize triggered so
+		 *  handle window resizing in ugly way
+		 */
 		if (resized) {
 			delwin(mainwin);
 			endwin();
 			refresh();
 			clear();
+
+			/* Way too small, give up */
 			if ((COLS < 30) || (LINES < 5)) {
 				rc = ERR_SMALL_WIN;
 				break;
@@ -449,6 +527,9 @@ int main(int argc, char **argv)
 			resized = false;
 		}
 
+		/*
+		 *  Window getting too small, tell user
+		 */
 		if ((COLS < 80) || (LINES < 20)) {
 			wbkgd(mainwin, COLOR_PAIR(RED_BLUE));
 			wattrset(mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
@@ -459,14 +540,14 @@ int main(int argc, char **argv)
 			continue;	
 		}
 
-		if ((view == VIEW_PAGE) &&
-		    ((rc = read_maps(path_maps)) < 0))
-			break;
-
 		position[VIEW_PAGE].xwidth = COLS - 17;
 		position[VIEW_MEM].xwidth = (COLS - 17) / 4;
 
 		wbkgd(mainwin, COLOR_PAIR(RED_BLUE));
+
+		if ((view == VIEW_PAGE) &&
+		    ((rc = read_maps(path_maps)) < 0))
+			break;
 
 		tick++;
 		if (tick > 10) {
@@ -482,30 +563,7 @@ int main(int argc, char **argv)
 		}
 
 		ch = getch();
-		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		mvwprintw(mainwin, LINES - 1, 0, "KEY: ");
-		wattrset(mainwin, COLOR_PAIR(WHITE_RED));
-		wprintw(mainwin, "A");
-		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
-		wprintw(mainwin, " Mapped anon/file, ");
-		wattrset(mainwin, COLOR_PAIR(WHITE_YELLOW));
-		wprintw(mainwin, "P");
-		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
-		wprintw(mainwin, " Present in RAM, ");
-		wattrset(mainwin, COLOR_PAIR(WHITE_CYAN));
-		wprintw(mainwin, "D");
-		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
-		wprintw(mainwin, " Dirty, ");
-		wattrset(mainwin, COLOR_PAIR(WHITE_GREEN));
-		wprintw(mainwin, "S");
-		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
-		wprintw(mainwin, " Swap, ");
-		wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-		wprintw(mainwin, ".");
-		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
-		wprintw(mainwin, " not in RAM");
-
-		wattrset(mainwin, COLOR_PAIR(BLACK_WHITE) | A_BOLD);
+		show_key();
 
 		blink++;
 		if (view == VIEW_MEM) {
@@ -536,21 +594,8 @@ int main(int argc, char **argv)
 			wprintw(mainwin, "%s %s %-20.20s",
 				map->attr, map->dev, map->name[0] == '\0' ?  "[Anonymous]" : basename(map->name));
 		}
-		if (help_view) {
-			wattrset(mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
-			int x = (COLS - 40) / 2;
-			int y = (LINES - 10) / 2;
-			mvwprintw(mainwin, y + 0, x, " HELP (press ? or h to toggle on/off)  ");
-			mvwprintw(mainwin, y + 1, x, "                                       ");
-			mvwprintw(mainwin, y + 2, x, " Esc or q   quit                       ");
-			mvwprintw(mainwin, y + 3, x, " Tab        Toggle page information    ");
-			mvwprintw(mainwin, y + 4, x, " Enter      Toggle map/memory views    ");
-			mvwprintw(mainwin, y + 5, x, " + or z     Zoom in memory map         ");
-			mvwprintw(mainwin, y + 6, x, " - or Z     Zoom out memory map        ");
-			mvwprintw(mainwin, y + 7, x, " PgUp       Scroll up 1/2 page         ");
-			mvwprintw(mainwin, y + 8, x, " PgDown     Scroll Down1/2 page        ");
-			mvwprintw(mainwin, y + 9, x, " Cursor keys move Up/Down/Left/Right   ");
-		}
+		if (help_view)
+			show_help();
 
 		wrefresh(mainwin);
 		refresh();
@@ -563,22 +608,27 @@ int main(int argc, char **argv)
 		case 27:	/* ESC */
 		case 'q':
 		case 'Q':
+			/* Quit */
 			do_run = false;
 			break;
 		case '\t':
+			/* Toggle Tab view */
 			tab_view = !tab_view;
 			break;
 		case '?':
 		case 'h':
+			/* Toggle Help */
 			help_view = !help_view;
 			break;
 		case '\n':
+			/* Toggle MAP / MEMORY views */
 			view ^= 1;
 			p = &position[view];
 			blink = 0;
 			break;
 		case '+':
 		case 'z':
+			/* Zoom in */
 			if (view == VIEW_PAGE) {
 				zoom++ ;
 				if (zoom > 999)
@@ -587,6 +637,7 @@ int main(int argc, char **argv)
 			break;
 		case '-':
 		case 'Z':
+			/* Zoom out */
 			if (view == VIEW_PAGE) {
 				zoom--;
 				if (zoom < 1)
