@@ -21,7 +21,7 @@
 VERSION=0.01.00
 
 CFLAGS += -Wall -Wextra -DVERSION='"$(VERSION)"' -O2 -g
-LDFLAGS += -lpanel -lncurses
+LDFLAGS += -lncurses
 
 BINDIR=/usr/sbin
 MANDIR=/usr/share/man/man8
