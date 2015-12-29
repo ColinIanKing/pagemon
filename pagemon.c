@@ -431,6 +431,7 @@ int main(int argc, char **argv)
 			delwin(mainwin);
 			endwin();
 			refresh();
+			clear();
 			if ((COLS < 30) || (LINES < 5)) {
 				rc = ERR_SMALL_WIN;
 				break;
