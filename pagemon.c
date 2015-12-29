@@ -182,13 +182,77 @@ static void show_usage(void)
 		" -h help\n");
 }
 
+static void show_page_bits(
+	const int fd,
+	map_t *map,
+	const uint32_t page_size,
+	const int64_t index)
+{
+	uint64_t info;
+
+	wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+	mvwprintw(mainwin, 3, 4,
+		" Page:   0x%16.16" PRIx64 "                  ",
+		mem_info.pages[index].addr);
+	mvwprintw(mainwin, 4, 4,
+		" Map:    0x%16.16" PRIx64 "-%16.16" PRIx64 " ",
+		map->begin, map->end - 1);
+	mvwprintw(mainwin, 5, 4,
+		" Device: %5.5s                               ",
+		map->dev);
+	mvwprintw(mainwin, 6, 4,
+		" Prot:   %4.4s                                ",
+		map->attr);
+	mvwprintw(mainwin, 6, 4,
+		" File:   %-20.20s ", basename(map->name));
+
+	if (lseek(fd, sizeof(uint64_t) * (mem_info.pages[index].addr / page_size), SEEK_SET) < 0)
+		return;
+	if (read(fd, &info, sizeof(info)) != sizeof(info))
+		return;
+
+	mvwprintw(mainwin, 7, 4,
+		" Flag:   0x%16.16lx                  ", info);
+	if (info & PAGE_SWAPPED) {
+		mvwprintw(mainwin, 8, 4,
+			"   Swap Type:           0x%2.2x                 ",
+			info & 0x1f);
+		mvwprintw(mainwin, 9, 4,
+			"   Swap Offset:         0x%16.16lx   ",
+			(info & 0x00ffffffffffffff) >> 5);
+	} else {
+		mvwprintw(mainwin, 8, 4,
+			"                                             ");
+		mvwprintw(mainwin, 9, 4,
+			"   Page Frame Number:   0x%16.16lx   ",
+			info & 0x00ffffffffffffff);
+	}
+	mvwprintw(mainwin, 10, 4,
+		"   Soft-dirty PTE:      %3s                  ",
+		(info & PAGE_PTE_SOFT_DIRTY) ? "Yes" : "No ");
+	mvwprintw(mainwin, 11, 4,
+		"   Exlusively Mapped:   %3s                  ",
+		(info & PAGE_EXCLUSIVE_MAPPED) ? "Yes" : "No ");
+	mvwprintw(mainwin, 12, 4,
+		"   File or Shared Anon: %3s                  ",
+		(info & PAGE_FILE_SHARED_ANON) ? "Yes" : "No ");
+	mvwprintw(mainwin, 13, 4,
+		"   Present in Swap:     %3s                  ",
+		(info & PAGE_SWAPPED) ? "Yes" : "No ");
+	mvwprintw(mainwin, 14, 4,
+		"   Present in RAM:      %3s                  ",
+		(info & PAGE_PRESENT) ? "Yes" : "No ");
+}
+
+
 /*
  *  show_pages()
  *	show page mapping
  */
 static int show_pages(
 	const char *path_pagemap,
-	const int64_t page_index,
+	const int32_t cursor_index,
+	const int32_t page_index,
 	const uint32_t page_size,
 	const int32_t xwidth,
 	const int32_t zoom)
@@ -252,45 +316,11 @@ static int show_pages(
 	}
 
 	wattrset(mainwin, A_NORMAL);
-	if (map && tab_view) {
-		uint64_t info;
 
-		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		mvwprintw(mainwin, 3, 4, " Page:   0x%16.16" PRIx64 "                  ",
-			mem_info.pages[index].addr);
-		mvwprintw(mainwin, 4, 4, " Map:    0x%16.16" PRIx64 "-%16.16" PRIx64 " ",
-			map->begin, map->end - 1);
-		mvwprintw(mainwin, 5, 4, " Device: %5.5s                               ", map->dev);
-		mvwprintw(mainwin, 6, 4, " Prot:   %4.4s                                ", map->attr);
-		mvwprintw(mainwin, 6, 4, " File:   %-20.20s ", basename(map->name));
-		lseek(fd, sizeof(uint64_t) * (mem_info.pages[index].addr / page_size), SEEK_SET);
-		if (read(fd, &info, sizeof(info)) > 0) {
-		mvwprintw(mainwin, 7, 4, " Flag:   0x%16.16lx                  ", info);
-		if (info & PAGE_SWAPPED) {
-			mvwprintw(mainwin, 8, 4, "   Swap Type:           0x%2.2x                 ",
-				info & 0x1f);
-			mvwprintw(mainwin, 9, 4, "   Swap Offset:         0x%16.16lx   ",
-				(info & 0x00ffffffffffffff) >> 5);
-		} else {
-			mvwprintw(mainwin, 8, 4, "                                             ");
-			mvwprintw(mainwin, 9, 4, "   Page Frame Number:   0x%16.16lx   ",
-				info & 0x00ffffffffffffff);
-		}
-		mvwprintw(mainwin, 10, 4, "   Soft-dirty PTE:      %3s                  ",
-			(info & PAGE_PTE_SOFT_DIRTY) ? "Yes" : "No ");
-		mvwprintw(mainwin, 11, 4, "   Exlusively Mapped:   %3s                  ",
-			(info & PAGE_EXCLUSIVE_MAPPED) ? "Yes" : "No ");
-		mvwprintw(mainwin, 12, 4, "   File or Shared Anon: %3s                  ",
-			(info & PAGE_FILE_SHARED_ANON) ? "Yes" : "No ");
-		mvwprintw(mainwin, 13, 4, "   Present in Swap:     %3s                  ",
-			(info & PAGE_SWAPPED) ? "Yes" : "No ");
-		mvwprintw(mainwin, 14, 4, "   Present in RAM:      %3s                  ",
-			(info & PAGE_PRESENT) ? "Yes" : "No ");
-		}
-	}
+	if (map && tab_view)
+		show_page_bits(fd, map, page_size, cursor_index);
 
 	(void)close(fd);
-
 	return 0;
 }
 
@@ -568,17 +598,17 @@ int main(int argc, char **argv)
 		blink++;
 		if (view == VIEW_MEM) {
 			position_t *pc = &position[VIEW_PAGE];
-			uint32_t index = page_index + (pc->xpos + (pc->ypos * pc->xwidth));
-			map = mem_info.pages[index].map;
-			show_addr = mem_info.pages[index].addr + data_index + (p->xpos + (p->ypos * p->xwidth));
-			if (show_memory(path_mem, index, data_index, page_size, p->xwidth) < 0)
+			uint32_t cursor_index = page_index + (pc->xpos + (pc->ypos * pc->xwidth));
+			map = mem_info.pages[cursor_index].map;
+			show_addr = mem_info.pages[cursor_index].addr + data_index + (p->xpos + (p->ypos * p->xwidth));
+			if (show_memory(path_mem, cursor_index, data_index, page_size, p->xwidth) < 0)
 				break;
 			curxpos = (p->xpos * 3) + 17;
 		} else {
-			uint32_t index = page_index + (p->xpos + (p->ypos * p->xwidth));
-			map = mem_info.pages[index].map;
-			show_addr = mem_info.pages[index].addr;
-			show_pages(path_pagemap, page_index, page_size, p->xwidth, zoom);
+			uint32_t cursor_index = page_index + (p->xpos + (p->ypos * p->xwidth));
+			map = mem_info.pages[cursor_index].map;
+			show_addr = mem_info.pages[cursor_index].addr;
+			show_pages(path_pagemap, cursor_index, page_index, page_size, p->xwidth, zoom);
 			curxpos = p->xpos + 17;
 		}
 		wattrset(mainwin, A_BOLD | ((blink & 0x20) ? COLOR_PAIR(BLACK_WHITE) : COLOR_PAIR(WHITE_BLACK)));
