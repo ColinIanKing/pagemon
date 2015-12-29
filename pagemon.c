@@ -773,8 +773,8 @@ int main(int argc, char **argv)
 					"[Anonymous]" : basename(map->name));
 		}
 
-		//wrefresh(mainwin);
-		//refresh();
+		wrefresh(mainwin);
+		refresh();
 
 		prev_page_index = page_index;
 		prev_data_index = data_index;
@@ -875,9 +875,13 @@ int main(int argc, char **argv)
 			p->xpos = p->xwidth - 1;
 			p->ypos--;
 		}
-		if (p->ypos > p->ypos_max)
-			p->ypos = p->ypos_max;
 
+		/*
+		 *  Handling yposition overflow / underflow
+		 *  is non-trivial as we need to consider
+		 *  different views and how to handle the
+		 *  scroll data and page index offsets
+		 */
 		if (view == VIEW_MEM) {
 			if (p->ypos > LINES - 3) {
 				data_index += p->xwidth *
@@ -908,20 +912,6 @@ int main(int argc, char **argv)
 			}
 		}
 
-		wattrset(mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
-		mvwprintw(mainwin, 10, 1,
-			"show_addr %p, mem_info.last_addr %p",
-			(void *)show_addr,
-			(void *)mem_info.last_addr);
-		mvwprintw(mainwin, 11, 1,
-			"page_index %p, prev_page_index %p",
-			(void *)page_index,
-			(void *)prev_page_index);
-		mvwprintw(mainwin, 12, 1,
-			"data_index %p, prev_data_index %p",
-			(void *)data_index,
-			(void *)prev_data_index);
-
 		if (page_index < 0) {
 			page_index = 0;	
 			data_index = 0;
@@ -940,7 +930,8 @@ int main(int argc, char **argv)
 				p->ypos = p->ypos_prev;
 			}
 		} else {
-			if (page_index + zoom * (p->xpos + (p->ypos * p->xwidth)) >= mem_info.npages) {
+			if (page_index + (zoom * (p->xpos +
+			    (p->ypos * p->xwidth))) >= mem_info.npages) {
 				page_index = prev_page_index;
 				p->xpos = p->xpos_prev;
 				p->ypos = p->ypos_prev;
@@ -951,8 +942,6 @@ int main(int argc, char **argv)
 			free(mem_info.pages);
 			mem_info.npages = 0;
 		}
-		wrefresh(mainwin);
-		refresh();
 
 		usleep(udelay);
 	} while (do_run);
