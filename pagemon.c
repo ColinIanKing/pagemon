@@ -528,6 +528,8 @@ static inline void show_help(void)
 	mvwprintw(mainwin, y + 9,  x,
 		" PgDown     Scroll Down1/2 page            ");
 	mvwprintw(mainwin, y + 10, x,
+		" Home       Move cursor back to top        ");
+	mvwprintw(mainwin, y + 11, x,
 		" Cursor keys move Up/Down/Left/Right       ");
 }
 
