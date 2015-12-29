@@ -9,7 +9,7 @@ Homepage: http://kernel.ubuntu.com/~cking/pagemon
 Package: pagemon
 Architecture: linux-any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: an interactive memory/page monitoring tool
+Description: interactive memory/page monitoring tool
  pagemon is a ncurses based interactive memory/page monitoring tool
  allowing one to browse the memory map of an active running process
  on Linux.
