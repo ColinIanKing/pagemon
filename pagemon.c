@@ -395,6 +395,35 @@ static int show_memory(
 }
 
 /*
+ *  read_all_pages()
+ *	read in all pages into memory, this
+ *	will force swapped out pages back into
+ *	memory
+ */
+static int read_all_pages(const char *path_mem)
+{
+	int fd;
+	int64_t index;
+
+	if ((fd = open(path_mem, O_RDONLY)) < 0)
+		return ERR_NO_MEM_INFO;
+
+	for (index = 0; index < mem_info.npages; index++) {
+		off_t addr = mem_info.pages[index].addr;
+		uint8_t byte;
+
+		if (lseek(fd, addr, SEEK_SET) < 0)
+			continue;
+		if (read(fd, &byte, sizeof(byte)) < 0)
+			continue;
+	}
+
+	(void)close(fd);
+
+	return 0;
+}
+
+/*
  *  show_key()
  *	show key for mapping info
  */
@@ -431,20 +460,21 @@ static inline void show_key(void)
  */
 static inline void show_help(void)
 {
-	const int x = (COLS - 40) / 2;
+	const int x = (COLS - 45) / 2;
 	const int y = (LINES - 10) / 2;
 
 	wattrset(mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
-	mvwprintw(mainwin, y + 0, x, " HELP (press ? or h to toggle on/off)  ");
-	mvwprintw(mainwin, y + 1, x, "                                       ");
-	mvwprintw(mainwin, y + 2, x, " Esc or q   quit                       ");
-	mvwprintw(mainwin, y + 3, x, " Tab        Toggle page information    ");
-	mvwprintw(mainwin, y + 4, x, " Enter      Toggle map/memory views    ");
-	mvwprintw(mainwin, y + 5, x, " + or z     Zoom in memory map         ");
-	mvwprintw(mainwin, y + 6, x, " - or Z     Zoom out memory map        ");
-	mvwprintw(mainwin, y + 7, x, " PgUp       Scroll up 1/2 page         ");
-	mvwprintw(mainwin, y + 8, x, " PgDown     Scroll Down1/2 page        ");
-	mvwprintw(mainwin, y + 9, x, " Cursor keys move Up/Down/Left/Right   ");
+	mvwprintw(mainwin, y + 0,  x, " HELP (press ? or h to toggle on/off)      ");
+	mvwprintw(mainwin, y + 1,  x, "                                           ");
+	mvwprintw(mainwin, y + 2,  x, " Esc or q   quit                           ");
+	mvwprintw(mainwin, y + 3,  x, " Tab        Toggle page information        ");
+	mvwprintw(mainwin, y + 4,  x, " Enter      Toggle map/memory views        ");
+	mvwprintw(mainwin, y + 5,  x, " + or z     Zoom in memory map             ");
+	mvwprintw(mainwin, y + 6,  x, " - or Z     Zoom out memory map            ");
+	mvwprintw(mainwin, y + 7,  x, " R          Read pages (swap in all pages) ");
+	mvwprintw(mainwin, y + 8,  x, " PgUp       Scroll up 1/2 page             ");
+	mvwprintw(mainwin, y + 9,  x, " PgDown     Scroll Down1/2 page            ");
+	mvwprintw(mainwin, y + 10, x, " Cursor keys move Up/Down/Left/Right       ");
 }
 
 int main(int argc, char **argv)
@@ -669,6 +699,9 @@ int main(int argc, char **argv)
 		case 'h':
 			/* Toggle Help */
 			help_view = !help_view;
+			break;
+		case 'R':
+			read_all_pages(path_mem);
 			break;
 		case '\n':
 			/* Toggle MAP / MEMORY views */
