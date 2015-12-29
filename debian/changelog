@@ -1,3 +1,15 @@
+pagemon (0.01.01-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Add Home key option to help
+  * Make read on pages trigger on R and r keys
+  * Check lseek errors with (off_t)-1  instead of < 0
+  * Fix some build warnings
+  * debian: control: fix lintian warning
+  * Fix some minor warnings as found by cppcheck
+
+ -- Colin King <colin.king@canonical.com>  Tue, 29 Dec 2015 20:06:00 +0000
+
 pagemon (0.01.00-1) unstable; urgency=medium
 
   * Initial release
