@@ -362,7 +362,7 @@ static int show_memory(
 	int32_t i;
 	int64_t index = page_index;
 	int fd;
-	off_t addr;
+	uint64_t addr;
 
 	if ((fd = open(path_mem, O_RDONLY)) < 0)
 		return ERR_NO_MEM_INFO;
@@ -383,11 +383,19 @@ static int show_memory(
 		for (j = 0; j < xwidth; j++) {
 			if (index >= mem_info.npages) {
 				wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
+				mvwprintw(mainwin, i, 17 + j * 3, "   ");
+				mvwprintw(mainwin, i, 17 + (3 * xwidth) + j, " ");
+				goto do_border;
 			} else {
 				uint8_t byte;
 				addr = mem_info.pages[index].addr + data_index;
-
-				if (lseek(fd, addr, SEEK_SET) < 0) {
+				if (addr > mem_info.last_addr) {
+					wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
+					mvwprintw(mainwin, i, 17 + j * 3, "   ");
+					mvwprintw(mainwin, i, 17 + (3 * xwidth) + j, " ");
+					goto do_border;
+				}
+				if (lseek(fd, (off_t)addr, SEEK_SET) < 0) {
 					wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
 					mvwprintw(mainwin, i, 17 + j * 3, "?? ");
 					wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
@@ -409,10 +417,10 @@ static int show_memory(
 				wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
 				mvwprintw(mainwin, i, 17 + (3 * xwidth) + j, "%c",
 					(byte < 32 || byte > 126) ? '.' : byte);
-do_border:
-				wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-				mvwprintw(mainwin, i, 16 + (3 * xwidth), " ");
 			}
+do_border:
+			wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
+			mvwprintw(mainwin, i, 16 + (3 * xwidth), " ");
 			data_index++;
 			if (data_index >= page_size) {
 				data_index -= page_size;
