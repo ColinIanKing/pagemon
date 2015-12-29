@@ -190,7 +190,8 @@ static void show_usage(void)
 		" -h        help\n"
 		" -p pid    process ID to monitor\n"
 		" -r        read (page back in) pages at start\n"
-		" -t ticks  ticks between dirty page checks\n");
+		" -t ticks  ticks between dirty page checks\n"
+		" -z zoom   set page zoom scale\n");
 }
 
 static void show_page_bits(
@@ -535,7 +536,7 @@ int main(int argc, char **argv)
 	memset(position, 0, sizeof(position));
 
 	for (;;) {
-		int c = getopt(argc, argv, "d:hp:rt:");
+		int c = getopt(argc, argv, "d:hp:rt:z:");
 
 		if (c == -1)
 			break;
@@ -568,6 +569,14 @@ int main(int argc, char **argv)
 				fprintf(stderr, "Invalid ticks value\n");
 				exit(EXIT_FAILURE);
 			}
+			break;
+		case 'z':
+			zoom = strtoul(optarg, NULL, 10);
+			if (errno || (zoom < 1) || (zoom > 999)) {
+				fprintf(stderr, "Invalid zoom value\n");
+				exit(EXIT_FAILURE);
+			}
+			break;
 			break;
 		default:
 			show_usage();
