@@ -136,7 +136,8 @@ static int read_maps(const char *path_maps)
 			mem_info.maps[n].dev,
 			mem_info.maps[n].name);
 
-		mem_info.npages += (mem_info.maps[n].end - mem_info.maps[n].begin) / PAGE_SIZE;
+		mem_info.npages += (mem_info.maps[n].end -
+				    mem_info.maps[n].begin) / PAGE_SIZE;
 		n++;
 		if (n >= MAX_MMAPS)
 			break;
@@ -147,7 +148,8 @@ static int read_maps(const char *path_maps)
 	mem_info.pages = page = calloc(mem_info.npages, sizeof(page_t));
 
 	for (i = 0; i < mem_info.nmaps; i++) {
-		uint64_t count = (mem_info.maps[i].end - mem_info.maps[i].begin) / PAGE_SIZE;
+		uint64_t count = (mem_info.maps[i].end -
+				  mem_info.maps[i].begin) / PAGE_SIZE;
 		uint64_t addr = mem_info.maps[i].begin;
 
 		for (j = 0; j < count; j++) {
@@ -190,6 +192,7 @@ static void show_page_bits(
 	const int64_t index)
 {
 	uint64_t info;
+	off_t offset;
 
 	wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
 	mvwprintw(mainwin, 3, 4,
@@ -207,7 +210,8 @@ static void show_page_bits(
 	mvwprintw(mainwin, 6, 4,
 		" File:   %-20.20s ", basename(map->name));
 
-	if (lseek(fd, sizeof(uint64_t) * (mem_info.pages[index].addr / page_size), SEEK_SET) < 0)
+	offset = sizeof(uint64_t) * (mem_info.pages[index].addr / page_size);
+	if (lseek(fd, offset, SEEK_SET) < 0)
 		return;
 	if (read(fd, &info, sizeof(info)) != sizeof(info))
 		return;
@@ -287,7 +291,10 @@ static int show_pages(
 				state = '~';
 			} else {
 				uint64_t addr = mem_info.pages[index].addr;
-				lseek(fd, sizeof(uint64_t) * (addr / page_size), SEEK_SET);
+				off_t offset = sizeof(uint64_t) *
+					       (addr / page_size);
+
+				lseek(fd, offset, SEEK_SET);
 				if (read(fd, &info, sizeof(info)) < 0)
 					break;
 
@@ -464,17 +471,28 @@ static inline void show_help(void)
 	const int y = (LINES - 10) / 2;
 
 	wattrset(mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
-	mvwprintw(mainwin, y + 0,  x, " HELP (press ? or h to toggle on/off)      ");
-	mvwprintw(mainwin, y + 1,  x, "                                           ");
-	mvwprintw(mainwin, y + 2,  x, " Esc or q   quit                           ");
-	mvwprintw(mainwin, y + 3,  x, " Tab        Toggle page information        ");
-	mvwprintw(mainwin, y + 4,  x, " Enter      Toggle map/memory views        ");
-	mvwprintw(mainwin, y + 5,  x, " + or z     Zoom in memory map             ");
-	mvwprintw(mainwin, y + 6,  x, " - or Z     Zoom out memory map            ");
-	mvwprintw(mainwin, y + 7,  x, " R          Read pages (swap in all pages) ");
-	mvwprintw(mainwin, y + 8,  x, " PgUp       Scroll up 1/2 page             ");
-	mvwprintw(mainwin, y + 9,  x, " PgDown     Scroll Down1/2 page            ");
-	mvwprintw(mainwin, y + 10, x, " Cursor keys move Up/Down/Left/Right       ");
+	mvwprintw(mainwin, y + 0,  x,
+		" HELP (press ? or h to toggle on/off)      ");
+	mvwprintw(mainwin, y + 1,  x,
+		"                                           ");
+	mvwprintw(mainwin, y + 2,  x,
+		" Esc or q   quit                           ");
+	mvwprintw(mainwin, y + 3,  x,
+		" Tab        Toggle page information        ");
+	mvwprintw(mainwin, y + 4,  x,
+		" Enter      Toggle map/memory views        ");
+	mvwprintw(mainwin, y + 5,  x,
+		" + or z     Zoom in memory map             ");
+	mvwprintw(mainwin, y + 6,  x,
+		" - or Z     Zoom out memory map            ");
+	mvwprintw(mainwin, y + 7,  x,
+		" R          Read pages (swap in all pages) ");
+	mvwprintw(mainwin, y + 8,  x,
+		" PgUp       Scroll up 1/2 page             ");
+	mvwprintw(mainwin, y + 9,  x,
+		" PgDown     Scroll Down1/2 page            ");
+	mvwprintw(mainwin, y + 10, x,
+		" Cursor keys move Up/Down/Left/Right       ");
 }
 
 int main(int argc, char **argv)
@@ -594,7 +612,8 @@ int main(int argc, char **argv)
 		if ((COLS < 80) || (LINES < 20)) {
 			wbkgd(mainwin, COLOR_PAIR(RED_BLUE));
 			wattrset(mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
-			mvwprintw(mainwin, LINES / 2, (COLS / 2) - 10, "[ WINDOW TOO SMALL ]");
+			mvwprintw(mainwin, LINES / 2, (COLS / 2) - 10,
+				"[ WINDOW TOO SMALL ]");
 			wrefresh(mainwin);
 			refresh();
 			usleep(10000);
@@ -629,16 +648,19 @@ int main(int argc, char **argv)
 		blink++;
 		if (view == VIEW_MEM) {
 			position_t *pc = &position[VIEW_PAGE];
-			uint32_t cursor_index = page_index + (pc->xpos + (pc->ypos * pc->xwidth));
+			uint32_t cursor_index = page_index +
+				(pc->xpos + (pc->ypos * pc->xwidth));
 			int32_t curxpos = (p->xpos * 3) + 17;
 
 			map = mem_info.pages[cursor_index].map;
-			show_addr = mem_info.pages[cursor_index].addr + data_index + (p->xpos + (p->ypos * p->xwidth));
+			show_addr = mem_info.pages[cursor_index].addr +
+				data_index + (p->xpos + (p->ypos * p->xwidth));
 			if (show_memory(path_mem, cursor_index, data_index, page_size, p->xwidth) < 0)
 				break;
 
 			blink_attrs = A_BOLD | ((blink & 0x20) ?
-				COLOR_PAIR(WHITE_BLUE) : COLOR_PAIR(BLUE_WHITE));
+				COLOR_PAIR(WHITE_BLUE) :
+				COLOR_PAIR(BLUE_WHITE));
 			wattrset(mainwin, blink_attrs);
 			curch = mvwinch(mainwin, p->ypos + 1, curxpos) & A_CHARTEXT;
 			mvwprintw(mainwin, p->ypos + 1, curxpos, "%c", curch);
@@ -669,12 +691,17 @@ int main(int argc, char **argv)
 
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
 		if (!map) {
-			mvwprintw(mainwin, 0, 0, "Pagemon 0x---------------- Zoom x %-3d ", zoom);
+			mvwprintw(mainwin, 0, 0,
+				"Pagemon 0x---------------- Zoom x %-3d ",
+				zoom);
 			wprintw(mainwin, "---- --:-- %-20.20s", "[Not Mapped]");
 		} else {
-			mvwprintw(mainwin, 0, 0, "Pagemon 0x%16.16" PRIx64 " Zoom x %-3d ", show_addr, zoom);
+			mvwprintw(mainwin, 0, 0, "Pagemon 0x%16.16" PRIx64
+				" Zoom x %-3d ", show_addr, zoom);
 			wprintw(mainwin, "%s %s %-20.20s",
-				map->attr, map->dev, map->name[0] == '\0' ?  "[Anonymous]" : basename(map->name));
+				map->attr, map->dev,
+				map->name[0] == '\0' ?
+					"[Anonymous]" : basename(map->name));
 		}
 
 		wrefresh(mainwin);
@@ -754,7 +781,8 @@ int main(int argc, char **argv)
 		}
 
 		position[VIEW_PAGE].ypos_max =
-			(((mem_info.npages - page_index) / zoom) - p->xpos) / position[0].xwidth;
+			(((mem_info.npages - page_index) / zoom) - p->xpos) /
+			position[0].xwidth;
 		position[VIEW_MEM].ypos_max = LINES - 2;
 
 		if (p->xpos >= p->xwidth) {
@@ -770,7 +798,8 @@ int main(int argc, char **argv)
 
 		if (view == VIEW_MEM) {
 			if (p->ypos > LINES - 3) {
-				data_index += p->xwidth * (p->ypos - (LINES - 3));
+				data_index += p->xwidth *
+					(p->ypos - (LINES - 3));
 				p->ypos = LINES - 3;
 				if (data_index > page_size) {
 					data_index -= page_size;
@@ -788,7 +817,8 @@ int main(int argc, char **argv)
 		} else {
 			data_index = 0;
 			if (p->ypos > LINES - 3) {
-				page_index += zoom * p->xwidth * (p->ypos - (LINES - 3));
+				page_index += zoom * p->xwidth *
+					(p->ypos - (LINES - 3));
 				p->ypos = LINES - 3;
 			}
 			if (p->ypos < 0) {
