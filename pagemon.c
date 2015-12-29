@@ -66,6 +66,8 @@ enum {
 	YELLOW_BLUE,
 	BLACK_GREEN,
 	BLACK_YELLOW,
+	BLACK_CYAN,
+	BLACK_BLUE,
 	YELLOW_RED,
 	YELLOW_BLACK,
 	BLACK_BLACK,
@@ -314,17 +316,21 @@ static int show_memory(
 
 				lseek(fd, addr, SEEK_SET);
 				if (read(fd, &byte, sizeof(byte)) < 0) {
-					wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
+					wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
 					mvwprintw(mainwin, i, 17 + j * 3, "?? ");
+					wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
 					mvwprintw(mainwin, i, 17 + (3 * xwidth) + j, "?");
 				} else {
-					wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
+					wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
 					mvwprintw(mainwin, i, 17 + j * 3, "%2.2x ", byte);
 					byte &= 0x7f;
 	
+					wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
 					mvwprintw(mainwin, i, 17 + (3 * xwidth) + j, "%c",
 						(byte < 32 || byte > 126) ? '.' : byte);
 				}
+				wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
+				mvwprintw(mainwin, i, 16 + (3 * xwidth), " ");
 			}
 			data_index++;
 			if (data_index >= page_size) {
@@ -414,6 +420,8 @@ int main(int argc, char **argv)
 	init_pair(YELLOW_BLUE, COLOR_YELLOW, COLOR_BLUE);
 	init_pair(BLACK_GREEN, COLOR_BLACK, COLOR_GREEN);
 	init_pair(BLACK_YELLOW, COLOR_BLACK, COLOR_YELLOW);
+	init_pair(BLACK_CYAN, COLOR_BLACK, COLOR_CYAN);
+	init_pair(BLACK_BLUE, COLOR_BLACK, COLOR_BLUE);
 	init_pair(YELLOW_RED, COLOR_YELLOW, COLOR_RED);
 	init_pair(YELLOW_BLACK, COLOR_YELLOW, COLOR_BLACK);
 	init_pair(BLACK_BLACK, COLOR_BLACK, COLOR_BLACK);
