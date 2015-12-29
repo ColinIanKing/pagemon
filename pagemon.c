@@ -53,6 +53,9 @@ static bool resized;
 #define PAGE_SWAPPED		(1ULL << 62)
 #define PAGE_PRESENT		(1ULL << 63)
 
+#define OPT_FLAG_READ_ALL_PAGES	(0x00000001)
+#define OPT_FLAG_PID		(0x00000002)
+
 enum {
 	WHITE_RED = 1,
 	WHITE_BLUE,
@@ -109,6 +112,7 @@ static uint32_t view = VIEW_PAGE;
 static bool tab_view = false;
 static bool help_view = false;
 static mem_info_t mem_info;
+static uint32_t opt_flags;
 
 /*
  *  read_maps()
@@ -181,8 +185,12 @@ static void handle_winch(int sig)
 static void show_usage(void)
 {
 	printf(APP_NAME ", version " VERSION "\n\n"
-		"Usage: " APP_NAME " [options] pid\n"
-		" -h help\n");
+		"Usage: " APP_NAME " [options]\n"
+		" -d        delay in microseconds between refreshes, default 10000\n"
+		" -h        help\n"
+		" -p pid    process ID to monitor\n"
+		" -r        read (page back in) pages at start\n"
+		" -t ticks  ticks between dirty page checks\n");
 }
 
 static void show_page_bits(
@@ -517,35 +525,66 @@ int main(int argc, char **argv)
 	char path_mem[PATH_MAX];
 	map_t *map;
 	int tick = 0;
+	long int ticks = 60;
 	int blink = 0;
 	int rc = OK;
 	int32_t zoom = 1;
+	useconds_t udelay = 10000;
 	position_t position[2];
 
 	memset(position, 0, sizeof(position));
 
 	for (;;) {
-		int c = getopt(argc, argv, "h");
+		int c = getopt(argc, argv, "d:hp:rt:");
 
 		if (c == -1)
 			break;
 		switch (c) {
+		case 'd':
+			udelay = strtoul(optarg, NULL, 10);
+			if (errno) {
+				fprintf(stderr, "Invalid delay value\n");
+				exit(EXIT_FAILURE);
+			}
+			break;
 		case 'h':
+			show_usage();
+			exit(EXIT_SUCCESS);
+			break;
+		case 'p':
+			pid = strtol(optarg, NULL, 10);
+			if (errno || (pid < 0)) {
+				fprintf(stderr, "Invalid pid value\n");
+				exit(EXIT_FAILURE);
+			}
+			opt_flags |= OPT_FLAG_PID;
+			break;
+		case 'r':
+			opt_flags |= OPT_FLAG_READ_ALL_PAGES;
+			break;
+		case 't':
+			ticks = strtol(optarg, NULL, 10);
+			if ((ticks < 1) || (ticks > 1000)) {
+				fprintf(stderr, "Invalid ticks value\n");
+				exit(EXIT_FAILURE);
+			}
 			break;
 		default:
 			show_usage();
 			exit(EXIT_FAILURE);
 		}
 	}
-
-	if (optind < argc) {
-		pid = strtol(argv[optind], NULL, 10);
-		if (errno) {
-			fprintf(stderr, "Invalid pid value\n");
-			exit(EXIT_FAILURE);
-		}
-	} else {
-		show_usage();
+	if (!(opt_flags & OPT_FLAG_PID)) {
+		fprintf(stderr, "Must provide process ID with -p option\n");
+		exit(EXIT_FAILURE);
+	}
+	if (geteuid() != 0) {
+		fprintf(stderr, "%s requires root privileges to "
+			"access memory of pid %d\n", APP_NAME, pid);
+		exit(EXIT_FAILURE);
+	}
+	if (kill(pid, 0) < 0) {
+		fprintf(stderr, "No such process %d\n", pid);
 		exit(EXIT_FAILURE);
 	}
 
@@ -625,7 +664,7 @@ int main(int argc, char **argv)
 				"[ WINDOW TOO SMALL ]");
 			wrefresh(mainwin);
 			refresh();
-			usleep(10000);
+			usleep(udelay);
 			continue;	
 		}
 
@@ -638,8 +677,13 @@ int main(int argc, char **argv)
 		    ((rc = read_maps(path_maps)) < 0))
 			break;
 
+		if (opt_flags & OPT_FLAG_READ_ALL_PAGES) {
+			read_all_pages(path_mem);
+			opt_flags &= ~OPT_FLAG_READ_ALL_PAGES;
+		}
+
 		tick++;
-		if (tick > 10) {
+		if (tick > ticks) {
 			int fd, ret;
 			tick = 0;
 
@@ -855,7 +899,7 @@ int main(int argc, char **argv)
 			mem_info.npages = 0;
 		}
 
-		usleep(10000);
+		usleep(udelay);
 	} while (do_run);
 
 	endwin();
