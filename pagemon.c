@@ -868,6 +868,12 @@ int main(int argc, char **argv)
 			blink = 0;
 			p->ypos -= (LINES - 2) / 2;
 			break;
+		case KEY_HOME:
+			p->xpos = 0;
+			p->ypos = 0;
+			data_index = 0;
+			page_index = 0;
+			break;
 		}
 
 		position[VIEW_PAGE].ypos_max =
