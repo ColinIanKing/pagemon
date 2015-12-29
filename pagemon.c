@@ -230,7 +230,7 @@ static void show_page_bits(
 		" File:   %-20.20s ", basename(map->name));
 
 	offset = sizeof(uint64_t) * (mem_info.pages[index].addr / page_size);
-	if (lseek(fd, offset, SEEK_SET) < 0)
+	if (lseek(fd, offset, SEEK_SET) == (off_t)-1)
 		return;
 	if (read(fd, &info, sizeof(info)) != sizeof(info))
 		return;
@@ -313,7 +313,7 @@ static int show_pages(
 				off_t offset = sizeof(uint64_t) *
 					       (addr / page_size);
 
-				if (lseek(fd, offset, SEEK_SET) < 0)
+				if (lseek(fd, offset, SEEK_SET) == (off_t)-1)
 					break;
 				if (read(fd, &info, sizeof(info)) < 0)
 					break;
@@ -399,7 +399,7 @@ static int show_memory(
 					mvwprintw(mainwin, i, 17 + (3 * xwidth) + j, " ");
 					goto do_border;
 				}
-				if (lseek(fd, (off_t)addr, SEEK_SET) < 0) {
+				if (lseek(fd, (off_t)addr, SEEK_SET) == (off_t)-1) {
 					wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
 					mvwprintw(mainwin, i, 17 + j * 3, "?? ");
 					wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
@@ -455,7 +455,7 @@ static int read_all_pages(const char *path_mem)
 		off_t addr = mem_info.pages[index].addr;
 		uint8_t byte;
 
-		if (lseek(fd, addr, SEEK_SET) < 0)
+		if (lseek(fd, addr, SEEK_SET) == (off_t)-1)
 			continue;
 		if (read(fd, &byte, sizeof(byte)) < 0)
 			continue;
