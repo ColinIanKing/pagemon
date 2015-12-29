@@ -60,17 +60,18 @@ enum {
 	WHITE_CYAN,
 	WHITE_GREEN,
 	WHITE_BLACK,
-	BLACK_WHITE,
+	YELLOW_BLUE,
+	YELLOW_RED,
+	YELLOW_BLACK,
 	CYAN_BLUE,
 	RED_BLUE,
-	YELLOW_BLUE,
+	BLACK_BLUE,
 	BLACK_GREEN,
 	BLACK_YELLOW,
 	BLACK_CYAN,
-	BLACK_BLUE,
-	YELLOW_RED,
-	YELLOW_BLACK,
+	BLACK_WHITE,
 	BLACK_BLACK,
+	BLUE_WHITE,
 };
 
 typedef struct {
@@ -524,18 +525,18 @@ int main(int argc, char **argv)
 	init_pair(BLACK_YELLOW, COLOR_BLACK, COLOR_YELLOW);
 	init_pair(BLACK_CYAN, COLOR_BLACK, COLOR_CYAN);
 	init_pair(BLACK_BLUE, COLOR_BLACK, COLOR_BLUE);
+	init_pair(BLACK_BLACK, COLOR_BLACK, COLOR_BLACK);
 	init_pair(YELLOW_RED, COLOR_YELLOW, COLOR_RED);
 	init_pair(YELLOW_BLACK, COLOR_YELLOW, COLOR_BLACK);
-	init_pair(BLACK_BLACK, COLOR_BLACK, COLOR_BLACK);
+	init_pair(BLUE_WHITE, COLOR_BLUE, COLOR_WHITE);
 
 	signal(SIGWINCH, handle_winch);
 
 	do {
-		int ch;
+		int ch, blink_attrs;
 		char curch;
 		position_t *p = &position[view];
 		uint64_t show_addr;
-		int32_t curxpos;
 
 		/*
 		 *  SIGWINCH window resize triggered so
@@ -599,21 +600,42 @@ int main(int argc, char **argv)
 		if (view == VIEW_MEM) {
 			position_t *pc = &position[VIEW_PAGE];
 			uint32_t cursor_index = page_index + (pc->xpos + (pc->ypos * pc->xwidth));
+			int32_t curxpos = (p->xpos * 3) + 17;
+
 			map = mem_info.pages[cursor_index].map;
 			show_addr = mem_info.pages[cursor_index].addr + data_index + (p->xpos + (p->ypos * p->xwidth));
 			if (show_memory(path_mem, cursor_index, data_index, page_size, p->xwidth) < 0)
 				break;
-			curxpos = (p->xpos * 3) + 17;
+
+			blink_attrs = A_BOLD | ((blink & 0x20) ?
+				COLOR_PAIR(WHITE_BLUE) : COLOR_PAIR(BLUE_WHITE));
+			wattrset(mainwin, blink_attrs);
+			curch = mvwinch(mainwin, p->ypos + 1, curxpos) & A_CHARTEXT;
+			mvwprintw(mainwin, p->ypos + 1, curxpos, "%c", curch);
+
+			blink_attrs = A_BOLD | ((blink & 0x20) ?
+				COLOR_PAIR(BLACK_WHITE) : COLOR_PAIR(WHITE_BLACK));
+			curxpos = 17 + (p->xwidth * 3) + p->xpos;
+			wattrset(mainwin, blink_attrs);
+			curch = mvwinch(mainwin, p->ypos + 1, curxpos) & A_CHARTEXT;
+			mvwprintw(mainwin, p->ypos + 1, curxpos, "%c", curch);
 		} else {
 			uint32_t cursor_index = page_index + (p->xpos + (p->ypos * p->xwidth));
+			int32_t curxpos = p->xpos + 17;
+
 			map = mem_info.pages[cursor_index].map;
 			show_addr = mem_info.pages[cursor_index].addr;
 			show_pages(path_pagemap, cursor_index, page_index, page_size, p->xwidth, zoom);
 			curxpos = p->xpos + 17;
+		
+			blink_attrs = A_BOLD | ((blink & 0x20) ?
+				COLOR_PAIR(BLACK_WHITE) : COLOR_PAIR(WHITE_BLACK));
+			wattrset(mainwin, blink_attrs);
+			curch = mvwinch(mainwin, p->ypos + 1, curxpos) & A_CHARTEXT;
+			mvwprintw(mainwin, p->ypos + 1, curxpos, "%c", curch);
 		}
-		wattrset(mainwin, A_BOLD | ((blink & 0x20) ? COLOR_PAIR(BLACK_WHITE) : COLOR_PAIR(WHITE_BLACK)));
-		curch = mvwinch(mainwin, p->ypos + 1, curxpos) & A_CHARTEXT;
-		mvwprintw(mainwin, p->ypos + 1, curxpos, "%c", curch);
+		if (help_view)
+			show_help();
 
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
 		if (!map) {
@@ -624,8 +646,6 @@ int main(int argc, char **argv)
 			wprintw(mainwin, "%s %s %-20.20s",
 				map->attr, map->dev, map->name[0] == '\0' ?  "[Anonymous]" : basename(map->name));
 		}
-		if (help_view)
-			show_help();
 
 		wrefresh(mainwin);
 		refresh();
