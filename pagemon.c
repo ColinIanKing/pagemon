@@ -591,7 +591,6 @@ int main(int argc, char **argv)
 				exit(EXIT_FAILURE);
 			}
 			break;
-			break;
 		default:
 			show_usage();
 			exit(EXIT_FAILURE);
@@ -707,12 +706,12 @@ int main(int argc, char **argv)
 
 		tick++;
 		if (tick > ticks) {
-			int fd, ret;
+			int fd;
 			tick = 0;
 
 			fd = open(path_refs, O_RDWR);
 			if (fd > -1) {
-				ret = write(fd, "4", 1);
+				int ret = write(fd, "4", 1);
 				(void)ret;
 				(void)close(fd);
 			}
@@ -755,7 +754,6 @@ int main(int argc, char **argv)
 			map = mem_info.pages[cursor_index].map;
 			show_addr = mem_info.pages[cursor_index].addr;
 			show_pages(path_pagemap, cursor_index, page_index, page_size, p->xwidth, zoom);
-			curxpos = p->xpos + 17;
 		
 			blink_attrs = A_BOLD | ((blink & 0x20) ?
 				COLOR_PAIR(BLACK_WHITE) : COLOR_PAIR(WHITE_BLACK));
