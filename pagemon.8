@@ -1,0 +1,77 @@
+.\"                                      Hey, EMACS: -*- nroff -*-
+.\" First parameter, NAME, should be all caps
+.\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
+.\" other parameters are allowed: see man(7), man(1)
+.TH PAGEMON 8 "December 29, 2015"
+.\" Please adjust this date whenever revising the manpage.
+.\"
+.\" Some roff macros, for reference:
+.\" .nh        disable hyphenation
+.\" .hy        enable hyphenation
+.\" .ad l      left justify
+.\" .ad b      justify to both left and right margins
+.\" .nf        disable filling
+.\" .fi        enable filling
+.\" .br        insert line break
+.\" .sp <n>    insert n+1 empty lines
+.\" for manpage-specific macros, see man(7)
+.SH NAME
+pagemon \- a tool to monitor memory pages.
+.br
+
+.SH SYNOPSIS
+.B pagemon
+.RI [options] 
+.br
+
+.SH DESCRIPTION
+pagemon is a program that allows one to interactively monitor the memory
+pages of a process.
+
+.SH OPTIONS
+pagemon options are as follow:
+.TP
+.B \-d delay
+delay in microseconds between data refreshes, the default is 10,000 microseconds (1/100th of
+a second).
+.TP
+.B \-h
+show help.
+.TP
+.B \-p
+specify the process id (PID) of the process to monitor.
+.TP
+.B \-r
+read pages into memory. This will force all pages in the process to be read into physical
+memory.
+.TP
+.B \-t ticks
+specify ticks between dirty page checks. The default is 60 ticks; the larger the value
+the longer time between dirty page checks.
+.TP
+.B \-z zoom
+.TP
+specify the default zoom level on page view, the default is 1 (that is 1-to-1 view of pages).
+Higher values increase the zoom level so more pages are represented in the map view.
+add timestamp (the "whence" info) to the output.
+.SH EXAMPLES
+.LP
+Monitor the thunderbird process:
+.RS 8
+sudo pagemon -p $(pidof thunderbird)
+.RE
+.LP
+Monitor process 1 (init), zoom scale of 4:
+.RS 8
+sudo pagemon -p 1 -z 4
+.RE
+.SH AUTHOR
+pagemon was written by Colin King <colin.king@canonical.com>
+.PP
+This manual page was written by Colin King <colin.king@canonical.com>,
+for the Ubuntu project (but may be used by others).
+.SH COPYRIGHT
+Copyright \(co 2015 Canonical Ltd.
+.br
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
