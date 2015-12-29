@@ -37,7 +37,7 @@ static bool resized;
 
 #define APP_NAME		"pagemon"
 #define MAX_MMAPS		(65536)
-#define PAGE_SIZE		(4096)
+#define PAGE_SIZE		(4096ULL)
 
 #define VIEW_PAGE		(0)
 #define VIEW_MEM		(1)
@@ -96,7 +96,7 @@ typedef struct {
 	uint32_t nmaps;			/* Number of mappings */
 
 	page_t *pages;			/* Pages */
-	int64_t npages;			/* Number of pages */
+	uint64_t npages;		/* Number of pages */
 
 	uint64_t last_addr;		/* Last address */
 } mem_info_t;
@@ -142,6 +142,10 @@ static int read_maps(const char *path_maps)
 			mem_info.maps[n].attr,
 			mem_info.maps[n].dev,
 			mem_info.maps[n].name);
+
+		/* Simple sanity check */
+		if (mem_info.maps[n].end < mem_info.maps[n].begin)
+			continue;
 
 		if (last_addr < mem_info.maps[n].end)
 			last_addr = mem_info.maps[n].end;
@@ -278,7 +282,7 @@ static int show_pages(
 	const int32_t zoom)
 {
 	int32_t i;
-	int64_t index = page_index;
+	uint64_t index = page_index;
 	int fd;
 	map_t *map = mem_info.pages[index].map;
 
@@ -360,7 +364,7 @@ static int show_memory(
 	const int32_t xwidth)
 {
 	int32_t i;
-	int64_t index = page_index;
+	uint64_t index = page_index;
 	int fd;
 	uint64_t addr;
 
@@ -442,7 +446,7 @@ do_border:
 static int read_all_pages(const char *path_mem)
 {
 	int fd;
-	int64_t index;
+	uint64_t index;
 
 	if ((fd = open(path_mem, O_RDONLY)) < 0)
 		return ERR_NO_MEM_INFO;
@@ -820,6 +824,10 @@ int main(int argc, char **argv)
 				if (zoom > 999)
 					zoom = 999;
 			}
+			p->xpos = 0;
+			p->ypos = 0;
+			data_index = 0;
+			page_index = 0;
 			break;
 		case '-':
 		case 'Z':
@@ -829,6 +837,10 @@ int main(int argc, char **argv)
 				if (zoom < 1)
 					zoom = 1;
 			}
+			p->xpos = 0;
+			p->ypos = 0;
+			data_index = 0;
+			page_index = 0;
 			break;
 		case KEY_DOWN:
 			blink = 0;
@@ -942,7 +954,7 @@ int main(int argc, char **argv)
 				p->ypos = p->ypos_prev;
 			}
 		} else {
-			if (page_index + (zoom * (p->xpos +
+			if ((uint64_t)page_index + (zoom * (p->xpos +
 			    (p->ypos * p->xwidth))) >= mem_info.npages) {
 				page_index = prev_page_index;
 				p->xpos = p->xpos_prev;
