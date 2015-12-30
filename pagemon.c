@@ -110,11 +110,11 @@ typedef struct {
 	int32_t xwidth;			/* Width of x */
 } position_t;
 
-static uint32_t view = VIEW_PAGE;
+static mem_info_t mem_info;
 static bool tab_view = false;
 static bool help_view = false;
-static mem_info_t mem_info;
-static uint32_t opt_flags;
+static uint8_t view = VIEW_PAGE;
+static uint8_t opt_flags;
 
 /*
  *  read_maps()
@@ -535,23 +535,25 @@ static inline void show_help(void)
 
 int main(int argc, char **argv)
 {
-	uint32_t page_size = PAGE_SIZE;
-	int64_t page_index = 0, prev_page_index;
-	int64_t data_index = 0, prev_data_index;
-	bool do_run = true;
-	pid_t pid = -1;
 	char path_refs[PATH_MAX];
 	char path_pagemap[PATH_MAX];
 	char path_maps[PATH_MAX];
 	char path_mem[PATH_MAX];
+
 	map_t *map;
-	int tick = 0;
-	long int ticks = 60;
-	int blink = 0;
-	int rc = OK;
-	int32_t zoom = 1;
+
 	useconds_t udelay = 10000;
 	position_t position[2];
+
+	int64_t page_index = 0, prev_page_index;
+	int64_t data_index = 0, prev_data_index;
+
+	int32_t tick = 0, ticks = 60, blink = 0, zoom = 1;
+	uint32_t page_size = PAGE_SIZE;
+
+	pid_t pid = -1;
+	int rc = OK;
+	bool do_run = true;
 
 	memset(position, 0, sizeof(position));
 
@@ -977,19 +979,25 @@ int main(int argc, char **argv)
 
 	switch (rc) {
 	case OK:
+		rc = EXIT_SUCCESS;
 		break;
 	case ERR_NO_MAP_INFO:
+		rc = EXIT_FAILURE;
 		fprintf(stderr, "Cannot access memory maps for PID %d\n", pid);
 		break;
 	case ERR_NO_MEM_INFO:
+		rc = EXIT_FAILURE;
 		fprintf(stderr, "Cannot access memory for PID %d\n", pid);
 		break;
 	case ERR_SMALL_WIN:
+		rc = EXIT_FAILURE;
 		fprintf(stderr, "Window too small\n");
 		break;
 	default:
+		rc = EXIT_FAILURE;
+		fprintf(stderr, "Unknown failure (%d)\n", rc);
 		break;
 	}
 
-	exit(EXIT_SUCCESS);
+	exit(rc);
 }
