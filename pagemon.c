@@ -236,19 +236,19 @@ static void show_page_bits(
 		return;
 
 	mvwprintw(mainwin, 7, 4,
-		" Flag:   0x%16.16lx                  ", info);
+		" Flag:   0x%16.16" PRIx64 "                  ", info);
 	if (info & PAGE_SWAPPED) {
 		mvwprintw(mainwin, 8, 4,
-			"   Swap Type:           0x%2.2x                 ",
+			"   Swap Type:           0x%2.2" PRIx64 "                 ",
 			info & 0x1f);
 		mvwprintw(mainwin, 9, 4,
-			"   Swap Offset:         0x%16.16lx   ",
+			"   Swap Offset:         0x%16.16" PRIx64 "   ",
 			(info & 0x00ffffffffffffff) >> 5);
 	} else {
 		mvwprintw(mainwin, 8, 4,
 			"                                             ");
 		mvwprintw(mainwin, 9, 4,
-			"   Page Frame Number:   0x%16.16lx   ",
+			"   Page Frame Number:   0x%16.16" PRIx64 "   ",
 			info & 0x00ffffffffffffff);
 	}
 	mvwprintw(mainwin, 10, 4,
@@ -299,7 +299,7 @@ static int show_pages(
 		} else {
 			uint64_t addr = mem_info.pages[index].addr;
 			wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-			mvwprintw(mainwin, i, 0, "%16.16lx ", addr);
+			mvwprintw(mainwin, i, 0, "%16.16" PRIx64 " ", addr);
 		}
 
 		for (j = 0; j < xwidth; j++) {
@@ -380,7 +380,7 @@ static int show_memory(
 			mvwprintw(mainwin, i, 0, "---------------- ");
 		} else {
 			wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-			mvwprintw(mainwin, i, 0, "%16.16lx ", addr);
+			mvwprintw(mainwin, i, 0, "%16.16" PRIx64 " ", addr);
 		}
 		mvwprintw(mainwin, i, COLS - 3, "   ", addr);
 
@@ -415,7 +415,7 @@ static int show_memory(
 				}
 
 				wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
-				mvwprintw(mainwin, i, 17 + j * 3, "%2.2x ", byte);
+				mvwprintw(mainwin, i, 17 + j * 3, "%2.2" PRIx8 " ", byte);
 				byte &= 0x7f;
 	
 				wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
