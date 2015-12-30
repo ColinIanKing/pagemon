@@ -548,7 +548,7 @@ int main(int argc, char **argv)
 	int64_t page_index = 0, prev_page_index;
 	int64_t data_index = 0, prev_data_index;
 
-	int32_t tick = 0, ticks = 60, blink = 0, zoom = 1;
+	int32_t tick, ticks = 60, blink = 0, zoom = 1;
 	uint32_t page_size = PAGE_SIZE;
 
 	pid_t pid = -1;
@@ -627,6 +627,7 @@ int main(int argc, char **argv)
 	snprintf(path_mem, sizeof(path_mem),
 		"/proc/%i/mem", pid);
 
+	tick = ticks;	/* force immediate page load */
 	resized = false;
 	initscr();
 	start_color();
