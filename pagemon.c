@@ -66,15 +66,7 @@ enum {
 	WHITE_CYAN,
 	WHITE_GREEN,
 	WHITE_BLACK,
-	YELLOW_BLUE,
-	YELLOW_RED,
-	YELLOW_BLACK,
-	CYAN_BLUE,
 	RED_BLUE,
-	BLACK_BLUE,
-	BLACK_GREEN,
-	BLACK_YELLOW,
-	BLACK_CYAN,
 	BLACK_WHITE,
 	BLACK_BLACK,
 	BLUE_WHITE,
@@ -393,14 +385,11 @@ static int show_memory(
 				nread = -1;
 		}
 
-
-		if (index >= mem_info.npages) {
-			wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
+		wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
+		if (index >= mem_info.npages)
 			mvwprintw(mainwin, i, 0, "---------------- ");
-		} else {
-			wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
+		else
 			mvwprintw(mainwin, i, 0, "%16.16" PRIx64 " ", addr);
-		}
 		mvwprintw(mainwin, i, COLS - 3, "   ", addr);
 
 		for (j = 0; j < xwidth; j++) {
@@ -677,16 +666,8 @@ int main(int argc, char **argv)
 	init_pair(WHITE_GREEN, COLOR_WHITE, COLOR_GREEN);
 	init_pair(WHITE_BLACK, COLOR_WHITE, COLOR_BLACK);
 	init_pair(BLACK_WHITE, COLOR_BLACK, COLOR_WHITE);
-	init_pair(CYAN_BLUE, COLOR_CYAN, COLOR_BLUE);
 	init_pair(RED_BLUE, COLOR_RED, COLOR_BLUE);
-	init_pair(YELLOW_BLUE, COLOR_YELLOW, COLOR_BLUE);
-	init_pair(BLACK_GREEN, COLOR_BLACK, COLOR_GREEN);
-	init_pair(BLACK_YELLOW, COLOR_BLACK, COLOR_YELLOW);
-	init_pair(BLACK_CYAN, COLOR_BLACK, COLOR_CYAN);
-	init_pair(BLACK_BLUE, COLOR_BLACK, COLOR_BLUE);
 	init_pair(BLACK_BLACK, COLOR_BLACK, COLOR_BLACK);
-	init_pair(YELLOW_RED, COLOR_YELLOW, COLOR_RED);
-	init_pair(YELLOW_BLACK, COLOR_YELLOW, COLOR_BLACK);
 	init_pair(BLUE_WHITE, COLOR_BLUE, COLOR_WHITE);
 
 	update_xwidth(position, 0);
