@@ -138,13 +138,17 @@ static int read_maps(const char *path_maps)
 		return ERR_NO_MAP_INFO;
 
 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
+		int ret;
+
 		mem_info.maps[n].name[0] = '\0';
-		sscanf(buffer, "%" SCNx64 "-%" SCNx64 " %5s %*s %6s %*d %s",
+		ret = sscanf(buffer, "%" SCNx64 "-%" SCNx64 " %5s %*s %6s %*d %s",
 			&mem_info.maps[n].begin,
 			&mem_info.maps[n].end,
 			mem_info.maps[n].attr,
 			mem_info.maps[n].dev,
 			mem_info.maps[n].name);
+		if (ret != 5)
+			continue;
 
 		/* Simple sanity check */
 		if (mem_info.maps[n].end < mem_info.maps[n].begin)
