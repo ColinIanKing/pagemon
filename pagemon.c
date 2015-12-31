@@ -39,6 +39,8 @@ static bool resized;
 #define MAX_MMAPS		(65536)
 #define PAGE_SIZE		(4096ULL)
 
+#define ADDR_OFFSET		(17)
+
 #define VIEW_PAGE		(0)
 #define VIEW_MEM		(1)
 
@@ -339,7 +341,7 @@ static int show_pages(
 			
 				index += zoom;
 			}
-			mvwprintw(mainwin, i, 17 + j, "%c", state);
+			mvwprintw(mainwin, i, ADDR_OFFSET + j, "%c", state);
 		}
 	}
 
@@ -387,39 +389,39 @@ static int show_memory(
 		for (j = 0; j < xwidth; j++) {
 			if (index >= mem_info.npages) {
 				wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
-				mvwprintw(mainwin, i, 17 + j * 3, "   ");
-				mvwprintw(mainwin, i, 17 + (3 * xwidth) + j, " ");
+				mvwprintw(mainwin, i, ADDR_OFFSET + j * 3, "   ");
+				mvwprintw(mainwin, i, ADDR_OFFSET + (3 * xwidth) + j, " ");
 				goto do_border;
 			} else {
 				uint8_t byte;
 				addr = mem_info.pages[index].addr + data_index;
 				if (addr > mem_info.last_addr) {
 					wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
-					mvwprintw(mainwin, i, 17 + j * 3, "   ");
-					mvwprintw(mainwin, i, 17 + (3 * xwidth) + j, " ");
+					mvwprintw(mainwin, i, ADDR_OFFSET + j * 3, "   ");
+					mvwprintw(mainwin, i, ADDR_OFFSET + (3 * xwidth) + j, " ");
 					goto do_border;
 				}
 				if (lseek(fd, (off_t)addr, SEEK_SET) == (off_t)-1) {
 					wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
-					mvwprintw(mainwin, i, 17 + j * 3, "?? ");
+					mvwprintw(mainwin, i, ADDR_OFFSET + j * 3, "?? ");
 					wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-					mvwprintw(mainwin, i, 17 + (3 * xwidth) + j, "?");
+					mvwprintw(mainwin, i, ADDR_OFFSET + (3 * xwidth) + j, "?");
 					goto do_border;
 				}
 				if (read(fd, &byte, sizeof(byte)) < 0) {
 					wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
-					mvwprintw(mainwin, i, 17 + j * 3, "?? ");
+					mvwprintw(mainwin, i, ADDR_OFFSET + j * 3, "?? ");
 					wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-					mvwprintw(mainwin, i, 17 + (3 * xwidth) + j, "?");
+					mvwprintw(mainwin, i, ADDR_OFFSET + (3 * xwidth) + j, "?");
 					goto do_border;
 				}
 
 				wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
-				mvwprintw(mainwin, i, 17 + j * 3, "%2.2" PRIx8 " ", byte);
+				mvwprintw(mainwin, i, ADDR_OFFSET + j * 3, "%2.2" PRIx8 " ", byte);
 				byte &= 0x7f;
 	
 				wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-				mvwprintw(mainwin, i, 17 + (3 * xwidth) + j, "%c",
+				mvwprintw(mainwin, i, ADDR_OFFSET + (3 * xwidth) + j, "%c",
 					(byte < 32 || byte > 126) ? '.' : byte);
 			}
 do_border:
@@ -540,7 +542,7 @@ static inline void update_xwidth(position_t *position, int v)
 		4	/* VIEW_MEM */
 	};
 
-	position[v].xwidth = (COLS - 17) / xwidth_scale[view];
+	position[v].xwidth = (COLS - ADDR_OFFSET) / xwidth_scale[view];
 }
 
 int main(int argc, char **argv)
@@ -745,7 +747,7 @@ int main(int argc, char **argv)
 
 		blink++;
 		if (view == VIEW_MEM) {
-			int32_t curxpos = (p->xpos * 3) + 17;
+			int32_t curxpos = (p->xpos * 3) + ADDR_OFFSET;
 			position_t *pc = &position[VIEW_PAGE];
 			uint32_t cursor_index = page_index +
 				(pc->xpos + (pc->ypos * pc->xwidth));
@@ -765,12 +767,12 @@ int main(int argc, char **argv)
 
 			blink_attrs = A_BOLD | ((blink & 0x20) ?
 				COLOR_PAIR(BLACK_WHITE) : COLOR_PAIR(WHITE_BLACK));
-			curxpos = 17 + (p->xwidth * 3) + p->xpos;
+			curxpos = ADDR_OFFSET + (p->xwidth * 3) + p->xpos;
 			wattrset(mainwin, blink_attrs);
 			curch = mvwinch(mainwin, p->ypos + 1, curxpos) & A_CHARTEXT;
 			mvwprintw(mainwin, p->ypos + 1, curxpos, "%c", curch);
 		} else {
-			int32_t curxpos = p->xpos + 17;
+			int32_t curxpos = p->xpos + ADDR_OFFSET;
 			uint32_t cursor_index = page_index +
 				(p->xpos + (p->ypos * p->xwidth));
 
