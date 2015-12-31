@@ -108,17 +108,23 @@ static mem_info_t mem_info;		/* Mapping and page info */
 static uint64_t max_pages;		/* Max pages in system */
 static uint32_t page_size;		/* Page size in bytes */
 static bool tab_view = false;		/* Page pop-up info */
+static bool vm_view = false;		/* Process VM stats */
 static bool help_view = false;		/* Help pop-up info */
 static bool resized = false;		/* SIGWINCH occurred */
 static uint8_t view = VIEW_PAGE;	/* Default page or memory view */
 static uint8_t opt_flags;		/* User option flags */
 WINDOW *mainwin = NULL;			/* curses main window */
+static char path_refs[PATH_MAX];
+static char path_pagemap[PATH_MAX];
+static char path_maps[PATH_MAX];
+static char path_mem[PATH_MAX];
+static char path_status[PATH_MAX];
 
 /*
  *  read_maps()
  *	read memory maps for a specifc process
  */
-static int read_maps(const char *path_maps)
+static int read_maps(void)
 {
 	FILE *fp;
 	uint32_t i, j, n = 0;
@@ -220,6 +226,35 @@ static void show_usage(void)
 }
 
 /*
+ *  show_vm()
+ *	show Virtual Memory stats
+ */
+static void show_vm(void)
+{
+	FILE *fp;
+	char buffer[4096];
+	int y = 3;
+
+	fp = fopen(path_status, "r");
+	if (fp == NULL)
+		return;
+
+	wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
+		char vmname[9], size[8];
+		uint64_t sz;
+
+		if (sscanf(buffer, "Vm%8s %" SCNu64 "%7s",
+		    vmname, &sz, size) != 3)
+			continue;
+		mvwprintw(mainwin, y, 54, "Vm%-6.6s %10" PRIu64 " %s",
+			vmname, sz, size);
+		y++;
+	}
+	fclose(fp);
+}
+
+/*
  *  show_page_bits()
  *	show info based on the page bit pattern
  */
@@ -294,7 +329,6 @@ static void show_page_bits(
  *	show page mapping
  */
 static int show_pages(
-	const char *path_pagemap,
 	const int32_t cursor_index,
 	const int32_t page_index,
 	const int32_t xwidth,
@@ -366,6 +400,8 @@ static int show_pages(
 
 	if (map && tab_view)
 		show_page_bits(fd, map, cursor_index);
+	if (vm_view)
+		show_vm();
 
 	(void)close(fd);
 	return 0;
@@ -376,7 +412,6 @@ static int show_pages(
  *	show memory contents
  */
 static int show_memory(
-	const char *path_mem,
 	const int64_t page_index,
 	int64_t data_index,
 	const uint32_t page_size,
@@ -461,7 +496,7 @@ do_border:
  *	will force swapped out pages back into
  *	memory
  */
-static int read_all_pages(const char *path_mem)
+static int read_all_pages(void)
 {
 	int fd;
 	uint64_t index;
@@ -531,29 +566,31 @@ static inline void show_help(void)
 
 	wattrset(mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
 	mvwprintw(mainwin, y + 0,  x,
-		" HELP (press ? or h to toggle on/off)      ");
+		" HELP (press ? or h to toggle on/off)%6s", "");
 	mvwprintw(mainwin, y + 1,  x,
-		"                                           ");
+		"%43s", "");
 	mvwprintw(mainwin, y + 2,  x,
-		" Esc or q   quit                           ");
+		" Esc or q   quit%27s", "");
 	mvwprintw(mainwin, y + 3,  x,
-		" Tab        Toggle page information        ");
+		" Tab        Toggle page information%8s", "");
 	mvwprintw(mainwin, y + 4,  x,
-		" Enter      Toggle map/memory views        ");
+		" Enter      Toggle map/memory views%8s", "");
 	mvwprintw(mainwin, y + 5,  x,
-		" + or z     Zoom in memory map             ");
+		" + or z     Zoom in memory map%13s", "");
 	mvwprintw(mainwin, y + 6,  x,
-		" - or Z     Zoom out memory map            ");
+		" - or Z     Zoom out memory map%12s", "");
 	mvwprintw(mainwin, y + 7,  x,
 		" R or r     Read pages (swap in all pages) ");
 	mvwprintw(mainwin, y + 8,  x,
-		" PgUp       Scroll up 1/2 page             ");
+		" V or v     Toggle Virtual Memory Stats    ");
 	mvwprintw(mainwin, y + 9,  x,
-		" PgDown     Scroll Down1/2 page            ");
-	mvwprintw(mainwin, y + 10, x,
-		" Home       Move cursor back to top        ");
+		" PgUp       Scroll up 1/2 page%13s", "");
+	mvwprintw(mainwin, y + 10,  x,
+		" PgDown     Scroll Down1/2 page%12s", "");
 	mvwprintw(mainwin, y + 11, x,
-		" Cursor keys move Up/Down/Left/Right       ");
+		" Home       Move cursor back to top%8s", "");
+	mvwprintw(mainwin, y + 12, x,
+		" Cursor keys move Up/Down/Left/Right%7s", "");
 }
 
 /*
@@ -575,11 +612,6 @@ static inline void update_xwidth(position_t *position, int v)
 int main(int argc, char **argv)
 {
 	struct sigaction action;
-
-	char path_refs[PATH_MAX];
-	char path_pagemap[PATH_MAX];
-	char path_maps[PATH_MAX];
-	char path_mem[PATH_MAX];
 
 	map_t *map;
 
@@ -677,6 +709,8 @@ int main(int argc, char **argv)
 		"/proc/%i/maps", pid);
 	snprintf(path_mem, sizeof(path_mem),
 		"/proc/%i/mem", pid);
+	snprintf(path_status, sizeof(path_status),
+		"/proc/%i/status", pid);
 
 	tick = ticks;	/* force immediate page load */
 	resized = false;
@@ -750,11 +784,11 @@ int main(int argc, char **argv)
 		wbkgd(mainwin, COLOR_PAIR(RED_BLUE));
 
 		if ((view == VIEW_PAGE) &&
-		    ((rc = read_maps(path_maps)) < 0))
+		    ((rc = read_maps()) < 0))
 			break;
 
 		if (opt_flags & OPT_FLAG_READ_ALL_PAGES) {
-			read_all_pages(path_mem);
+			read_all_pages();
 			opt_flags &= ~OPT_FLAG_READ_ALL_PAGES;
 		}
 
@@ -784,7 +818,7 @@ int main(int argc, char **argv)
 			map = mem_info.pages[cursor_index].map;
 			show_addr = mem_info.pages[cursor_index].addr +
 				data_index + (p->xpos + (p->ypos * p->xwidth));
-			if (show_memory(path_mem, cursor_index, data_index, page_size, p->xwidth) < 0)
+			if (show_memory(cursor_index, data_index, page_size, p->xwidth) < 0)
 				break;
 
 			blink_attrs = A_BOLD | ((blink & 0x20) ?
@@ -807,7 +841,7 @@ int main(int argc, char **argv)
 
 			map = mem_info.pages[cursor_index].map;
 			show_addr = mem_info.pages[cursor_index].addr;
-			show_pages(path_pagemap, cursor_index, page_index, p->xwidth, zoom);
+			show_pages(cursor_index, page_index, p->xwidth, zoom);
 		
 			blink_attrs = A_BOLD | ((blink & 0x20) ?
 				COLOR_PAIR(BLACK_WHITE) : COLOR_PAIR(WHITE_BLACK));
@@ -852,6 +886,11 @@ int main(int argc, char **argv)
 			/* Toggle Tab view */
 			tab_view = !tab_view;
 			break;
+		case 'v':
+		case 'V':
+			/* Toggle VM stats view */
+			vm_view = !vm_view;
+			break;
 		case '?':
 		case 'h':
 			/* Toggle Help */
@@ -859,7 +898,7 @@ int main(int argc, char **argv)
 			break;
 		case 'r':
 		case 'R':
-			read_all_pages(path_mem);
+			read_all_pages();
 			break;
 		case '\n':
 			/* Toggle MAP / MEMORY views */
