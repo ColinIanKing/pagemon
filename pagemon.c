@@ -533,6 +533,16 @@ static inline void show_help(void)
 		" Cursor keys move Up/Down/Left/Right       ");
 }
 
+static inline void update_xwidth(position_t *position, int v)
+{
+	static int32_t xwidth_scale[] = {
+		1,	/* VIEW_PAGE */
+		4	/* VIEW_MEM */
+	};
+
+	position[v].xwidth = (COLS - 17) / xwidth_scale[view];
+}
+
 int main(int argc, char **argv)
 {
 	char path_refs[PATH_MAX];
@@ -659,6 +669,9 @@ int main(int argc, char **argv)
 
 	signal(SIGWINCH, handle_winch);
 
+	update_xwidth(position, 0);
+	update_xwidth(position, 1);
+
 	do {
 		int ch, blink_attrs;
 		char curch;
@@ -683,7 +696,9 @@ int main(int argc, char **argv)
 			mainwin = newwin(LINES, COLS, 0, 0);
 			wbkgd(mainwin, COLOR_PAIR(RED_BLUE));
 			resized = false;
+
 		}
+
 
 		/*
 		 *  Window getting too small, tell user
@@ -699,8 +714,7 @@ int main(int argc, char **argv)
 			continue;	
 		}
 
-		position[VIEW_PAGE].xwidth = COLS - 17;
-		position[VIEW_MEM].xwidth = (COLS - 17) / 4;
+		update_xwidth(position, view);
 
 		wbkgd(mainwin, COLOR_PAIR(RED_BLUE));
 
