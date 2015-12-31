@@ -34,7 +34,6 @@
 
 #define APP_NAME		"pagemon"
 #define MAX_MMAPS		(65536)
-#define PAGE_SIZE		(4096ULL)
 
 #define ADDR_OFFSET		(17)
 #define HEX_WIDTH		(3)
@@ -47,6 +46,7 @@
 #define ERR_NO_MEM_INFO		(-2)
 #define ERR_SMALL_WIN		(-3)
 #define ERR_ALLOC_NOMEM		(-4)
+#define ERR_TOO_MANY_PAGES	(-5)
 
 #define	PAGE_PTE_SOFT_DIRTY	(1ULL << 55)
 #define	PAGE_EXCLUSIVE_MAPPED	(1ULL << 56)
@@ -105,6 +105,8 @@ typedef struct {
 
 /* I dislike globals, but it saves passing these around a lot */
 static mem_info_t mem_info;		/* Mapping and page info */
+static uint64_t max_pages;		/* Max pages in system */
+static uint32_t page_size;		/* Page size in bytes */
 static bool tab_view = false;		/* Page pop-up info */
 static bool help_view = false;		/* Help pop-up info */
 static bool resized = false;		/* SIGWINCH occurred */
@@ -132,6 +134,7 @@ static int read_maps(const char *path_maps)
 
 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
 		int ret;
+		int64_t length;
 
 		mem_info.maps[n].name[0] = '\0';
 		ret = sscanf(buffer, "%" SCNx64 "-%" SCNx64 " %5s %*s %6s %*d %s",
@@ -143,19 +146,28 @@ static int read_maps(const char *path_maps)
 		if (ret != 5)
 			continue;
 
+		if (last_addr < mem_info.maps[n].end)
+			last_addr = mem_info.maps[n].end;
+
 		/* Simple sanity check */
 		if (mem_info.maps[n].end < mem_info.maps[n].begin)
 			continue;
 
-		if (last_addr < mem_info.maps[n].end)
-			last_addr = mem_info.maps[n].end;
-		mem_info.npages += (mem_info.maps[n].end -
-				    mem_info.maps[n].begin) / PAGE_SIZE;
+		length = mem_info.maps[n].end - mem_info.maps[n].begin;
+		/* Check for overflow */
+		if (mem_info.npages + length < mem_info.npages)
+			continue;
+
+		mem_info.npages += length / page_size;
 		n++;
 		if (n >= MAX_MMAPS)
 			break;
 	}
 	fclose(fp);
+
+	/* Unlikely, but need to keep Coverity Scan happy */
+	if (mem_info.npages > max_pages)
+		return ERR_TOO_MANY_PAGES;
 
 	mem_info.nmaps = n;
 	mem_info.pages = page = calloc(mem_info.npages, sizeof(page_t));
@@ -166,14 +178,14 @@ static int read_maps(const char *path_maps)
 
 	for (i = 0; i < mem_info.nmaps; i++) {
 		uint64_t count = (mem_info.maps[i].end -
-				  mem_info.maps[i].begin) / PAGE_SIZE;
+				  mem_info.maps[i].begin) / page_size;
 		uint64_t addr = mem_info.maps[i].begin;
 
 		for (j = 0; j < count; j++) {
 			page->addr = addr;
 			page->map = &mem_info.maps[i];
 			page->index = i;
-			addr += PAGE_SIZE;
+			addr += page_size;
 			page++;
 		}
 	}
@@ -214,7 +226,6 @@ static void show_usage(void)
 static void show_page_bits(
 	const int fd,
 	map_t *map,
-	const uint32_t page_size,
 	const int64_t index)
 {
 	uint64_t info;
@@ -222,19 +233,22 @@ static void show_page_bits(
 
 	wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
 	mvwprintw(mainwin, 3, 4,
-		" Page:   0x%16.16" PRIx64 "                  ",
-		mem_info.pages[index].addr);
+		" Page:      0x%16.16" PRIx64 "%18s",
+		mem_info.pages[index].addr, "");
 	mvwprintw(mainwin, 4, 4,
-		" Map:    0x%16.16" PRIx64 "-%16.16" PRIx64 " ",
-		map->begin, map->end - 1);
+		" Page Size: 0x%8.8" PRIx32 " bytes%20s",
+		page_size, "");
 	mvwprintw(mainwin, 5, 4,
-		" Device: %5.5s                               ",
-		map->dev);
+		" Map:       0x%16.16" PRIx64 "-%16.16" PRIx64 " ",
+		map->begin, map->end - 1);
 	mvwprintw(mainwin, 6, 4,
-		" Prot:   %4.4s                                ",
-		map->attr);
-	mvwprintw(mainwin, 6, 4,
-		" File:   %-20.20s ", basename(map->name));
+		" Device:    %5.5s%31s",
+		map->dev, "");
+	mvwprintw(mainwin, 7, 4,
+		" Prot:      %4.4s%32s",
+		map->attr, "");
+	mvwprintw(mainwin, 8, 4,
+		" Process:   %-35.35s ", basename(map->name));
 
 	offset = sizeof(uint64_t) * (mem_info.pages[index].addr / page_size);
 	if (lseek(fd, offset, SEEK_SET) == (off_t)-1)
@@ -242,37 +256,36 @@ static void show_page_bits(
 	if (read(fd, &info, sizeof(info)) != sizeof(info))
 		return;
 
-	mvwprintw(mainwin, 7, 4,
-		" Flag:   0x%16.16" PRIx64 "                  ", info);
+	mvwprintw(mainwin, 9, 4,
+		" Flag:      0x%16.16" PRIx64 "%18s", info, "");
 	if (info & PAGE_SWAPPED) {
-		mvwprintw(mainwin, 8, 4,
-			"   Swap Type:           0x%2.2" PRIx64 "                 ",
-			info & 0x1f);
-		mvwprintw(mainwin, 9, 4,
-			"   Swap Offset:         0x%16.16" PRIx64 "   ",
-			(info & 0x00ffffffffffffff) >> 5);
+		mvwprintw(mainwin, 10, 4,
+			"   Swap Type:           0x%2.2" PRIx64 "%20s",
+			info & 0x1f, "");
+		mvwprintw(mainwin, 11, 4,
+			"   Swap Offset:         0x%16.16" PRIx64 "%6s",
+			(info & 0x00ffffffffffffff) >> 5, "");
 	} else {
-		mvwprintw(mainwin, 8, 4,
-			"                                             ");
-		mvwprintw(mainwin, 9, 4,
-			"   Page Frame Number:   0x%16.16" PRIx64 "   ",
-			info & 0x00ffffffffffffff);
+		mvwprintw(mainwin, 10, 4, "%48s", "");
+		mvwprintw(mainwin, 11, 4,
+			"   Page Frame Number:   0x%16.16" PRIx64 "%6s",
+			info & 0x00ffffffffffffff, "");
 	}
-	mvwprintw(mainwin, 10, 4,
-		"   Soft-dirty PTE:      %3s                  ",
-		(info & PAGE_PTE_SOFT_DIRTY) ? "Yes" : "No ");
-	mvwprintw(mainwin, 11, 4,
-		"   Exlusively Mapped:   %3s                  ",
-		(info & PAGE_EXCLUSIVE_MAPPED) ? "Yes" : "No ");
 	mvwprintw(mainwin, 12, 4,
-		"   File or Shared Anon: %3s                  ",
-		(info & PAGE_FILE_SHARED_ANON) ? "Yes" : "No ");
+		"   Soft-dirty PTE:      %3s%21s",
+		(info & PAGE_PTE_SOFT_DIRTY) ? "Yes" : "No ", "");
 	mvwprintw(mainwin, 13, 4,
-		"   Present in Swap:     %3s                  ",
-		(info & PAGE_SWAPPED) ? "Yes" : "No ");
+		"   Exlusively Mapped:   %3s%21s",
+		(info & PAGE_EXCLUSIVE_MAPPED) ? "Yes" : "No ", "");
 	mvwprintw(mainwin, 14, 4,
-		"   Present in RAM:      %3s                  ",
-		(info & PAGE_PRESENT) ? "Yes" : "No ");
+		"   File or Shared Anon: %3s%21s",
+		(info & PAGE_FILE_SHARED_ANON) ? "Yes" : "No ", "");
+	mvwprintw(mainwin, 15, 4,
+		"   Present in Swap:     %3s%21s",
+		(info & PAGE_SWAPPED) ? "Yes" : "No ", "");
+	mvwprintw(mainwin, 16, 4,
+		"   Present in RAM:      %3s%21s",
+		(info & PAGE_PRESENT) ? "Yes" : "No ", "");
 }
 
 
@@ -284,7 +297,6 @@ static int show_pages(
 	const char *path_pagemap,
 	const int32_t cursor_index,
 	const int32_t page_index,
-	const uint32_t page_size,
 	const int32_t xwidth,
 	const int32_t zoom)
 {
@@ -353,7 +365,7 @@ static int show_pages(
 	wattrset(mainwin, A_NORMAL);
 
 	if (map && tab_view)
-		show_page_bits(fd, map, page_size, cursor_index);
+		show_page_bits(fd, map, cursor_index);
 
 	(void)close(fd);
 	return 0;
@@ -578,8 +590,6 @@ int main(int argc, char **argv)
 	int64_t data_index = 0, prev_data_index;
 
 	int32_t tick, ticks = 60, blink = 0, zoom = 1;
-	uint32_t page_size = PAGE_SIZE;
-
 	pid_t pid = -1;
 	int rc = OK;
 	bool do_run = true;
@@ -646,6 +656,12 @@ int main(int argc, char **argv)
 		fprintf(stderr, "No such process %d\n", pid);
 		exit(EXIT_FAILURE);
 	}
+	page_size = sysconf(_SC_PAGESIZE);
+	if (page_size == (uint32_t)-1) {
+		/* Guess */
+		page_size = 4096UL;
+	}
+	max_pages = ((uint64_t)((void *)~0)) / page_size;
 	memset(&action, 0, sizeof(action));
 	action.sa_handler = handle_winch;
 	if (sigaction(SIGWINCH, &action, NULL) < 0) {
@@ -791,7 +807,7 @@ int main(int argc, char **argv)
 
 			map = mem_info.pages[cursor_index].map;
 			show_addr = mem_info.pages[cursor_index].addr;
-			show_pages(path_pagemap, cursor_index, page_index, page_size, p->xwidth, zoom);
+			show_pages(path_pagemap, cursor_index, page_index, p->xwidth, zoom);
 		
 			blink_attrs = A_BOLD | ((blink & 0x20) ?
 				COLOR_PAIR(BLACK_WHITE) : COLOR_PAIR(WHITE_BLACK));
@@ -1026,6 +1042,12 @@ int main(int argc, char **argv)
 	case ERR_ALLOC_NOMEM:
 		rc = EXIT_FAILURE;
 		fprintf(stderr, "Memory allocation failed\n");
+		break;
+	case ERR_TOO_MANY_PAGES:
+		rc = EXIT_FAILURE;
+		fprintf(stderr, "Too many pages in process for %s\n", APP_NAME);
+		printf("%" PRIu64 " vs %" PRIu64 "\n",
+			mem_info.npages , max_pages);
 		break;
 	default:
 		rc = EXIT_FAILURE;
