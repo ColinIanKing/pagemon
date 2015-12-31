@@ -46,6 +46,7 @@
 #define ERR_NO_MAP_INFO		(-1)
 #define ERR_NO_MEM_INFO		(-2)
 #define ERR_SMALL_WIN		(-3)
+#define ERR_ALLOC_NOMEM		(-4)
 
 #define	PAGE_PTE_SOFT_DIRTY	(1ULL << 55)
 #define	PAGE_EXCLUSIVE_MAPPED	(1ULL << 56)
@@ -158,6 +159,9 @@ static int read_maps(const char *path_maps)
 
 	mem_info.nmaps = n;
 	mem_info.pages = page = calloc(mem_info.npages, sizeof(page_t));
+	if (!mem_info.pages)
+		return ERR_ALLOC_NOMEM;
+
 	mem_info.last_addr = last_addr;
 
 	for (i = 0; i < mem_info.nmaps; i++) {
@@ -1018,6 +1022,10 @@ int main(int argc, char **argv)
 	case ERR_SMALL_WIN:
 		rc = EXIT_FAILURE;
 		fprintf(stderr, "Window too small\n");
+		break;
+	case ERR_ALLOC_NOMEM:
+		rc = EXIT_FAILURE;
+		fprintf(stderr, "Memory allocation failed\n");
 		break;
 	default:
 		rc = EXIT_FAILURE;
