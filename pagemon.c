@@ -481,29 +481,34 @@ static int read_all_pages(const char *path_mem)
  */
 static inline void show_key(void)
 {
-	wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-	mvwprintw(mainwin, LINES - 1, 0, "KEY: ");
-	wattrset(mainwin, COLOR_PAIR(WHITE_RED));
-	wprintw(mainwin, "A");
-	wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-	wprintw(mainwin, " Mapped anon/file, ");
-	wattrset(mainwin, COLOR_PAIR(WHITE_YELLOW));
-	wprintw(mainwin, "P");
-	wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-	wprintw(mainwin, " Present in RAM, ");
-	wattrset(mainwin, COLOR_PAIR(WHITE_CYAN));
-	wprintw(mainwin, "D");
-	wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-	wprintw(mainwin, " Dirty, ");
-	wattrset(mainwin, COLOR_PAIR(WHITE_GREEN));
-	wprintw(mainwin, "S");
-	wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-	wprintw(mainwin, " Swap, ");
-	wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-	wprintw(mainwin, ".");
-	wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-	wprintw(mainwin, " not in RAM");
-	wattrset(mainwin, COLOR_PAIR(BLACK_WHITE) | A_BOLD);
+	if (view == VIEW_PAGE) {
+		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		mvwprintw(mainwin, LINES - 1, 0, "KEY: ");
+		wattrset(mainwin, COLOR_PAIR(WHITE_RED));
+		wprintw(mainwin, "A");
+		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		wprintw(mainwin, " Mapped anon/file, ");
+		wattrset(mainwin, COLOR_PAIR(WHITE_YELLOW));
+		wprintw(mainwin, "P");
+		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		wprintw(mainwin, " Present in RAM, ");
+		wattrset(mainwin, COLOR_PAIR(WHITE_CYAN));
+		wprintw(mainwin, "D");
+		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		wprintw(mainwin, " Dirty, ");
+		wattrset(mainwin, COLOR_PAIR(WHITE_GREEN));
+		wprintw(mainwin, "S");
+		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		wprintw(mainwin, " Swap, ");
+		wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
+		wprintw(mainwin, ".");
+		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		wprintw(mainwin, " not in RAM");
+		wattrset(mainwin, COLOR_PAIR(BLACK_WHITE) | A_BOLD);
+	} else {
+		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		mvwprintw(mainwin, LINES-1, 0, "%-*s", COLS, "");
+	}
 }
 
 /*
