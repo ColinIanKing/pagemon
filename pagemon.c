@@ -556,6 +556,8 @@ static inline void update_xwidth(position_t *position, int v)
 
 int main(int argc, char **argv)
 {
+	struct sigaction action;
+
 	char path_refs[PATH_MAX];
 	char path_pagemap[PATH_MAX];
 	char path_maps[PATH_MAX];
@@ -638,6 +640,12 @@ int main(int argc, char **argv)
 		fprintf(stderr, "No such process %d\n", pid);
 		exit(EXIT_FAILURE);
 	}
+	memset(&action, 0, sizeof(action));
+	action.sa_handler = handle_winch;
+	if (sigaction(SIGWINCH, &action, NULL) < 0) {
+		fprintf(stderr, "Could not set up window resizing handler\n");
+		exit(EXIT_FAILURE);
+	}
 
 	snprintf(path_refs, sizeof(path_refs),
 		"/proc/%i/clear_refs", pid);
@@ -677,8 +685,6 @@ int main(int argc, char **argv)
 	init_pair(YELLOW_RED, COLOR_YELLOW, COLOR_RED);
 	init_pair(YELLOW_BLACK, COLOR_YELLOW, COLOR_BLACK);
 	init_pair(BLUE_WHITE, COLOR_BLUE, COLOR_WHITE);
-
-	signal(SIGWINCH, handle_winch);
 
 	update_xwidth(position, 0);
 	update_xwidth(position, 1);
