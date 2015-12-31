@@ -380,7 +380,19 @@ static int show_memory(
 
 	for (i = 1; i < LINES - 1; i++) {
 		int32_t j;
+		uint8_t bytes[xwidth];
+		ssize_t nread = 0;
+
 		addr = mem_info.pages[index].addr + data_index;
+
+		if (lseek(fd, (off_t)addr, SEEK_SET) == (off_t)-1) {
+			nread = -1;
+		} else {
+			nread = read(fd, bytes, (size_t)xwidth);
+			if (nread < 0)
+				nread = -1;
+		}
+
 
 		if (index >= mem_info.npages) {
 			wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
@@ -392,47 +404,33 @@ static int show_memory(
 		mvwprintw(mainwin, i, COLS - 3, "   ", addr);
 
 		for (j = 0; j < xwidth; j++) {
-			if (index >= mem_info.npages) {
+			uint8_t byte = bytes[j];
+
+			addr = mem_info.pages[index].addr + data_index;
+			if ((index >= mem_info.npages) ||
+			    (addr > mem_info.last_addr)) {
+				/* End of memory */
 				wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
 				mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "   ");
 				mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xwidth) + j, " ");
 				goto do_border;
-			} else {
-				uint8_t byte;
-				addr = mem_info.pages[index].addr + data_index;
-
-				if (addr > mem_info.last_addr) {
-					/* End of data, show nothing */
-					wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
-					mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "   ");
-					mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH  * xwidth) + j, " ");
-					goto do_border;
-				}
-				if (lseek(fd, (off_t)addr, SEEK_SET) == (off_t)-1) {
-					/* Seek failed, show error */
-					wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
-					mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "?? ");
-					wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-					mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xwidth) + j, "?");
-					goto do_border;
-				}
-				if (read(fd, &byte, sizeof(byte)) < 0) {
-					/* Read failed, show error */
-					wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
-					mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "?? ");
-					wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-					mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xwidth) + j, "?");
-					goto do_border;
-				}
-
-				wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
-				mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "%2.2" PRIx8 " ", byte);
-				byte &= 0x7f;
-	
-				wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-				mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xwidth) + j, "%c",
-					(byte < 32 || byte > 126) ? '.' : byte);
 			}
+			if (j > nread) {
+				/* Failed to read data */
+				wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
+				mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "?? ");
+				wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
+				mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xwidth) + j, "?");
+				goto do_border;
+			}
+
+			/* We have some legimate data to display */
+			byte &= 0x7f;
+			wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
+			mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "%2.2" PRIx8 " ", byte);
+			wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
+			mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xwidth) + j, "%c",
+				(byte < 32 || byte > 126) ? '.' : byte);
 do_border:
 			wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
 			mvwprintw(mainwin, i, 16 + (HEX_WIDTH * xwidth), " ");
