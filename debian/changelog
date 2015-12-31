@@ -1,3 +1,30 @@
+pagemon (0.01.02-1) unstable; urgency=medium
+
+  * Initial Debian release (Closes: #809403)
+  * Makefile: remove -lm -g build flags, bump version
+  * Manual: update date
+  * Add VM statistics
+  * Remove hard coded page size, fix up formatting fields in tab view
+  * Access byte from bytes when appropriate, don't mask off top bit to early
+  * Add some context Page/Memory view hint in status line
+  * Add calloc failure checking
+  * Add more comments, shift some globals around
+  * Add some more comments for functions
+  * Remove unused colour attribute pairs
+  * Only show KEY info when in PAGE view mode
+  * Perform line by line memory reads for more efficient reading
+  * Use sigaction rather than signal for SIGWINCH handler
+  * Add sscanf checking when reading maps
+  * Replace hard coded hex format width with HEX_WIDTH
+  * Replace hard coded address offset cursor position to ADDR_OFFSET
+  * Fix memory view changing location bug when resizing
+  * Set tick to ticks to force immediate load of dirty page info
+  * Use PRI* format specifiers
+  * Minor code clean up
+  * Don't need panel library, update README
+
+ -- Colin King <colin.king@canonical.com>  Thu, 31 Dec 2015 20:14:01 +0000
+
 pagemon (0.01.01-1) unstable; urgency=medium
 
   * Makefile: bump version
