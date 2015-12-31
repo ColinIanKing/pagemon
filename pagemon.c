@@ -480,7 +480,7 @@ static inline void show_key(void)
 {
 	if (view == VIEW_PAGE) {
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		mvwprintw(mainwin, LINES - 1, 0, "KEY: ");
+		mvwprintw(mainwin, LINES - 1, 0, "Page View, KEY: ");
 		wattrset(mainwin, COLOR_PAIR(WHITE_RED));
 		wprintw(mainwin, "A");
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
@@ -504,7 +504,7 @@ static inline void show_key(void)
 		wattrset(mainwin, COLOR_PAIR(BLACK_WHITE) | A_BOLD);
 	} else {
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		mvwprintw(mainwin, LINES-1, 0, "%-*s", COLS, "");
+		mvwprintw(mainwin, LINES-1, 0, "%-*s", COLS, "Memory View");
 	}
 }
 
