@@ -40,6 +40,7 @@ static bool resized;
 #define PAGE_SIZE		(4096ULL)
 
 #define ADDR_OFFSET		(17)
+#define HEX_WIDTH		(3)
 
 #define VIEW_PAGE		(0)
 #define VIEW_MEM		(1)
@@ -389,44 +390,48 @@ static int show_memory(
 		for (j = 0; j < xwidth; j++) {
 			if (index >= mem_info.npages) {
 				wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
-				mvwprintw(mainwin, i, ADDR_OFFSET + j * 3, "   ");
-				mvwprintw(mainwin, i, ADDR_OFFSET + (3 * xwidth) + j, " ");
+				mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "   ");
+				mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xwidth) + j, " ");
 				goto do_border;
 			} else {
 				uint8_t byte;
 				addr = mem_info.pages[index].addr + data_index;
+
 				if (addr > mem_info.last_addr) {
+					/* End of data, show nothing */
 					wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
-					mvwprintw(mainwin, i, ADDR_OFFSET + j * 3, "   ");
-					mvwprintw(mainwin, i, ADDR_OFFSET + (3 * xwidth) + j, " ");
+					mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "   ");
+					mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH  * xwidth) + j, " ");
 					goto do_border;
 				}
 				if (lseek(fd, (off_t)addr, SEEK_SET) == (off_t)-1) {
+					/* Seek failed, show error */
 					wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
-					mvwprintw(mainwin, i, ADDR_OFFSET + j * 3, "?? ");
+					mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "?? ");
 					wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-					mvwprintw(mainwin, i, ADDR_OFFSET + (3 * xwidth) + j, "?");
+					mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xwidth) + j, "?");
 					goto do_border;
 				}
 				if (read(fd, &byte, sizeof(byte)) < 0) {
+					/* Read failed, show error */
 					wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
-					mvwprintw(mainwin, i, ADDR_OFFSET + j * 3, "?? ");
+					mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "?? ");
 					wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-					mvwprintw(mainwin, i, ADDR_OFFSET + (3 * xwidth) + j, "?");
+					mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xwidth) + j, "?");
 					goto do_border;
 				}
 
 				wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
-				mvwprintw(mainwin, i, ADDR_OFFSET + j * 3, "%2.2" PRIx8 " ", byte);
+				mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "%2.2" PRIx8 " ", byte);
 				byte &= 0x7f;
 	
 				wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-				mvwprintw(mainwin, i, ADDR_OFFSET + (3 * xwidth) + j, "%c",
+				mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xwidth) + j, "%c",
 					(byte < 32 || byte > 126) ? '.' : byte);
 			}
 do_border:
 			wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-			mvwprintw(mainwin, i, 16 + (3 * xwidth), " ");
+			mvwprintw(mainwin, i, 16 + (HEX_WIDTH * xwidth), " ");
 			data_index++;
 			if (data_index >= page_size) {
 				data_index -= page_size;
