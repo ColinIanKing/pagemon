@@ -32,9 +32,6 @@
 #include <signal.h>
 #include <ncurses.h>
 
-WINDOW *mainwin;
-static bool resized;
-
 #define APP_NAME		"pagemon"
 #define MAX_MMAPS		(65536)
 #define PAGE_SIZE		(4096ULL)
@@ -105,11 +102,14 @@ typedef struct {
 	int32_t xwidth;			/* Width of x */
 } position_t;
 
-static mem_info_t mem_info;
-static bool tab_view = false;
-static bool help_view = false;
-static uint8_t view = VIEW_PAGE;
-static uint8_t opt_flags;
+/* I dislike globals, but it saves passing these around a lot */
+static mem_info_t mem_info;		/* Mapping and page info */
+static bool tab_view = false;		/* Page pop-up info */
+static bool help_view = false;		/* Help pop-up info */
+static bool resized = false;		/* SIGWINCH occurred */
+static uint8_t view = VIEW_PAGE;	/* Default page or memory view */
+static uint8_t opt_flags;		/* User option flags */
+WINDOW *mainwin = NULL;			/* curses main window */
 
 /*
  *  read_maps()
