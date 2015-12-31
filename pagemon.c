@@ -203,6 +203,10 @@ static void show_usage(void)
 		" -z zoom   set page zoom scale\n");
 }
 
+/*
+ *  show_page_bits()
+ *	show info based on the page bit pattern
+ */
 static void show_page_bits(
 	const int fd,
 	map_t *map,
@@ -536,6 +540,12 @@ static inline void show_help(void)
 		" Cursor keys move Up/Down/Left/Right       ");
 }
 
+/*
+ *  update_xwidth()
+ *	set the xwidth scale for a specific view v
+ *	based on column width and scaling factor for
+ *	page or mem (hex) views
+ */
 static inline void update_xwidth(position_t *position, int v)
 {
 	static int32_t xwidth_scale[] = {
