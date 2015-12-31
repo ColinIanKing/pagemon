@@ -401,8 +401,7 @@ static int show_memory(
 		mvwprintw(mainwin, i, COLS - 3, "   ", addr);
 
 		for (j = 0; j < xwidth; j++) {
-			uint8_t byte = bytes[j];
-
+			uint8_t byte;
 			addr = mem_info.pages[index].addr + data_index;
 			if ((index >= mem_info.npages) ||
 			    (addr > mem_info.last_addr)) {
@@ -422,10 +421,11 @@ static int show_memory(
 			}
 
 			/* We have some legimate data to display */
-			byte &= 0x7f;
+ 			byte = bytes[j];
 			wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
 			mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "%2.2" PRIx8 " ", byte);
 			wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
+			byte &= 0x7f;
 			mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xwidth) + j, "%c",
 				(byte < 32 || byte > 126) ? '.' : byte);
 do_border:
