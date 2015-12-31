@@ -18,9 +18,9 @@
 # Author: Colin Ian King <colin.king@canonical.com>
 #
 
-VERSION=0.01.01
+VERSION=0.01.02
 
-CFLAGS += -Wall -Wextra -DVERSION='"$(VERSION)"' -O2 -g
+CFLAGS += -Wall -Wextra -DVERSION='"$(VERSION)"' -O2
 LDFLAGS += -lncurses
 
 BINDIR=/usr/sbin
@@ -28,7 +28,7 @@ MANDIR=/usr/share/man/man8
 
 
 pagemon: pagemon.o Makefile
-	$(CC) $(CPPFLAGS) $(CFLAGS)  $< -lm -o $@ $(LDFLAGS)
+	$(CC) $(CPPFLAGS) $(CFLAGS)  $< -o $@ $(LDFLAGS)
 
 pagemon.o: pagemon.c Makefile
 
@@ -43,7 +43,7 @@ dist:
 	rm -rf pagemon-$(VERSION)
 
 clean:
-	rm -f pagemon pagemon.o pagemon.8.gz
+	rm -f pagemon pagemon.o pagemon.8.gz pagemon-$(VERSION).tar.gz
 
 install: pagemon pagemon.8.gz
 	mkdir -p ${DESTDIR}${BINDIR}
