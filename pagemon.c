@@ -299,12 +299,12 @@ static void show_page_bits(
 			info & 0x1f, "");
 		mvwprintw(mainwin, 11, 4,
 			"   Swap Offset:         0x%16.16" PRIx64 "%6s",
-			(info & 0x00ffffffffffffff) >> 5, "");
+			(info & 0x00ffffffffffffffULL) >> 5, "");
 	} else {
 		mvwprintw(mainwin, 10, 4, "%48s", "");
 		mvwprintw(mainwin, 11, 4,
 			"   Page Frame Number:   0x%16.16" PRIx64 "%6s",
-			info & 0x00ffffffffffffff, "");
+			info & 0x00ffffffffffffffULL, "");
 	}
 	mvwprintw(mainwin, 12, 4,
 		"   Soft-dirty PTE:      %3s%21s",
