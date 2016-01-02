@@ -606,7 +606,7 @@ static inline void update_xwidth(position_t *position, int v)
 		4	/* VIEW_MEM */
 	};
 
-	position[v].xwidth = (COLS - ADDR_OFFSET) / xwidth_scale[view];
+	position[v].xwidth = (COLS - ADDR_OFFSET) / xwidth_scale[v];
 }
 
 int main(int argc, char **argv)
