@@ -623,7 +623,7 @@ int main(int argc, char **argv)
 
 	int32_t tick, ticks = 60, blink = 0, zoom = 1;
 	pid_t pid = -1;
-	int rc = OK;
+	int rc = OK, ret;
 	bool do_run = true;
 
 	memset(position, 0, sizeof(position));
@@ -799,7 +799,7 @@ int main(int argc, char **argv)
 
 			fd = open(path_refs, O_RDWR);
 			if (fd > -1) {
-				int ret = write(fd, "4", 1);
+				ret = write(fd, "4", 1);
 				(void)ret;
 				(void)close(fd);
 			}
@@ -1062,37 +1062,32 @@ int main(int argc, char **argv)
 
 	endwin();
 
+	ret = EXIT_FAILURE;
 	switch (rc) {
 	case OK:
-		rc = EXIT_SUCCESS;
+		ret = EXIT_SUCCESS;
 		break;
 	case ERR_NO_MAP_INFO:
-		rc = EXIT_FAILURE;
 		fprintf(stderr, "Cannot access memory maps for PID %d\n", pid);
 		break;
 	case ERR_NO_MEM_INFO:
-		rc = EXIT_FAILURE;
 		fprintf(stderr, "Cannot access memory for PID %d\n", pid);
 		break;
 	case ERR_SMALL_WIN:
-		rc = EXIT_FAILURE;
 		fprintf(stderr, "Window too small\n");
 		break;
 	case ERR_ALLOC_NOMEM:
-		rc = EXIT_FAILURE;
 		fprintf(stderr, "Memory allocation failed\n");
 		break;
 	case ERR_TOO_MANY_PAGES:
-		rc = EXIT_FAILURE;
 		fprintf(stderr, "Too many pages in process for %s\n", APP_NAME);
 		printf("%" PRIu64 " vs %" PRIu64 "\n",
 			mem_info.npages , max_pages);
 		break;
 	default:
-		rc = EXIT_FAILURE;
 		fprintf(stderr, "Unknown failure (%d)\n", rc);
 		break;
 	}
 
-	exit(rc);
+	exit(ret);
 }
