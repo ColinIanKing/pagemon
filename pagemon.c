@@ -133,7 +133,6 @@ static int read_maps(void)
 	uint64_t last_addr = 0;
 
 	memset(&mem_info, 0, sizeof(mem_info));
-
 	fp = fopen(path_maps, "r");
 	if (fp == NULL)
 		return ERR_NO_MAP_INFO;
@@ -395,7 +394,6 @@ static int show_pages(
 			mvwprintw(mainwin, i, ADDR_OFFSET + j, "%c", state);
 		}
 	}
-
 	wattrset(mainwin, A_NORMAL);
 
 	if (map && tab_view)
@@ -431,7 +429,6 @@ static int show_memory(
 		ssize_t nread = 0;
 
 		addr = mem_info.pages[index].addr + data_index;
-
 		if (lseek(fd, (off_t)addr, SEEK_SET) == (off_t)-1) {
 			nread = -1;
 		} else {
@@ -513,7 +510,6 @@ static int read_all_pages(void)
 		if (read(fd, &byte, sizeof(byte)) < 0)
 			continue;
 	}
-
 	(void)close(fd);
 
 	return 0;
@@ -764,7 +760,6 @@ int main(int argc, char **argv)
 
 		}
 
-
 		/*
 		 *  Window getting too small, tell user
 		 */
@@ -780,7 +775,6 @@ int main(int argc, char **argv)
 		}
 
 		update_xwidth(position, view);
-
 		wbkgd(mainwin, COLOR_PAIR(RED_BLUE));
 
 		if ((view == VIEW_PAGE) &&
@@ -1025,7 +1019,6 @@ int main(int argc, char **argv)
 				p->ypos = 0;
 			}
 		}
-
 		if (page_index < 0) {
 			page_index = 0;	
 			data_index = 0;
@@ -1051,12 +1044,10 @@ int main(int argc, char **argv)
 				p->ypos = p->ypos_prev;
 			}
 		}
-
 		if (view == VIEW_PAGE) {
 			free(mem_info.pages);
 			mem_info.npages = 0;
 		}
-
 		usleep(udelay);
 	} while (do_run);
 
@@ -1088,6 +1079,5 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Unknown failure (%d)\n", rc);
 		break;
 	}
-
 	exit(ret);
 }
