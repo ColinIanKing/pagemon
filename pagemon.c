@@ -151,9 +151,6 @@ static int read_maps(void)
 		if (ret != 5)
 			continue;
 
-		if (last_addr < mem_info.maps[n].end)
-			last_addr = mem_info.maps[n].end;
-
 		/* Simple sanity check */
 		if (mem_info.maps[n].end < mem_info.maps[n].begin)
 			continue;
@@ -162,6 +159,9 @@ static int read_maps(void)
 		/* Check for overflow */
 		if (mem_info.npages + length < mem_info.npages)
 			continue;
+
+		if (last_addr < mem_info.maps[n].end)
+			last_addr = mem_info.maps[n].end;
 
 		mem_info.npages += length / page_size;
 		n++;
