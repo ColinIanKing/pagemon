@@ -605,6 +605,21 @@ static inline void update_xwidth(position_t *position, int v)
 	position[v].xwidth = (COLS - ADDR_OFFSET) / xwidth_scale[v];
 }
 
+/*
+ *  reset_cursor()
+ *	reset to home position
+ */
+static inline void reset_cursor(
+	position_t *p,
+	int64_t *data_index,
+	int64_t *page_index)
+{
+	p->xpos = 0;
+	p->ypos = 0;
+	*data_index = 0;
+	*page_index = 0;
+}
+
 int main(int argc, char **argv)
 {
 	struct sigaction action;
@@ -908,10 +923,7 @@ int main(int argc, char **argv)
 				if (zoom > 999)
 					zoom = 999;
 			}
-			p->xpos = 0;
-			p->ypos = 0;
-			data_index = 0;
-			page_index = 0;
+			reset_cursor(p, &data_index, &page_index);
 			break;
 		case '-':
 		case 'Z':
@@ -921,10 +933,7 @@ int main(int argc, char **argv)
 				if (zoom < 1)
 					zoom = 1;
 			}
-			p->xpos = 0;
-			p->ypos = 0;
-			data_index = 0;
-			page_index = 0;
+			reset_cursor(p, &data_index, &page_index);
 			break;
 		case KEY_DOWN:
 			blink = 0;
@@ -963,10 +972,7 @@ int main(int argc, char **argv)
 			p->ypos -= (LINES - 2) / 2;
 			break;
 		case KEY_HOME:
-			p->xpos = 0;
-			p->ypos = 0;
-			data_index = 0;
-			page_index = 0;
+			reset_cursor(p, &data_index, &page_index);
 			break;
 		}
 
