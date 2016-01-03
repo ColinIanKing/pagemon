@@ -356,9 +356,10 @@ static int show_pages(
 
 		for (j = 0; j < xwidth; j++) {
 			char state = '.';
+			int attr = COLOR_PAIR(BLACK_WHITE);
 
 			if (index >= mem_info.npages) {
-				wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
+				attr = COLOR_PAIR(BLACK_BLACK);
 				state = '~';
 			} else {
 				uint64_t addr = mem_info.pages[index].addr;
@@ -370,27 +371,26 @@ static int show_pages(
 				if (read(fd, &info, sizeof(info)) < 0)
 					break;
 
-				wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-
+				attr = COLOR_PAIR(BLACK_WHITE);
 				if (info & PAGE_PRESENT) {
-					wattrset(mainwin, COLOR_PAIR(WHITE_YELLOW));
+					attr = COLOR_PAIR(WHITE_YELLOW);
 					state = 'P';
 				}
 				if (info & PAGE_SWAPPED) {
-					wattrset(mainwin, COLOR_PAIR(WHITE_GREEN));
+					attr = COLOR_PAIR(WHITE_GREEN);
 					state = 'S';
 				}
 				if (info & PAGE_FILE_SHARED_ANON) {
-					wattrset(mainwin, COLOR_PAIR(WHITE_RED));
+					attr = COLOR_PAIR(WHITE_RED);
 					state = 'M';
 				}
 				if (info & PAGE_PTE_SOFT_DIRTY) {
-					wattrset(mainwin, COLOR_PAIR(WHITE_CYAN));
+					attr = COLOR_PAIR(WHITE_CYAN);
 					state = 'D';
 				}
-			
 				index += zoom;
 			}
+			wattrset(mainwin, attr);
 			mvwprintw(mainwin, i, ADDR_OFFSET + j, "%c", state);
 		}
 	}
