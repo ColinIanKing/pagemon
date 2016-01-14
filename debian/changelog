@@ -1,3 +1,19 @@
+pagemon (0.01.03-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Fix build warning on 32 bit builds on max_pages evaluation
+  * Fix copyright year typo
+  * Clean up attribute setting on mem map
+  * Add cursor reset helper
+  * Only set last_addr on valid data
+  * Remove some extraneous lines
+  * Default to failure exit status, set to success on OK case.
+  * Update copyright info
+  * update_xwidth needs to set width based on v rather than view
+  * Make mask ULL
+
+ -- Colin King <colin.king@canonical.com>  Thu, 14 Jan 2016 14:08:00 +0000
+
 pagemon (0.01.02-1) unstable; urgency=medium
 
   * Initial Debian release (Closes: #809403)
