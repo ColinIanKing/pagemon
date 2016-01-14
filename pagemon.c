@@ -18,6 +18,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 #include <stdint.h>
 #include <libgen.h>
@@ -704,7 +705,7 @@ int main(int argc, char **argv)
 		/* Guess */
 		page_size = 4096UL;
 	}
-	max_pages = ((uint64_t)((void *)~0)) / page_size;
+	max_pages = ((uint64_t)((size_t)~0)) / page_size;
 	memset(&action, 0, sizeof(action));
 	action.sa_handler = handle_winch;
 	if (sigaction(SIGWINCH, &action, NULL) < 0) {
