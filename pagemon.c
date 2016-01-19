@@ -149,8 +149,11 @@ static int read_maps(void)
 			mem_info.maps[n].attr,
 			mem_info.maps[n].dev,
 			mem_info.maps[n].name);
-		if (ret != 5)
+		if (ret!=5 && ret!=4)
 			continue;
+		if (ret==4) {
+			mem_info.maps[n].name[0]='\0';
+		}
 
 		/* Simple sanity check */
 		if (mem_info.maps[n].end < mem_info.maps[n].begin)
