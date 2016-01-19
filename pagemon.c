@@ -1049,9 +1049,23 @@ int main(int argc, char **argv)
 		} else {
 			if ((uint64_t)page_index + (zoom * (p->xpos +
 			    (p->ypos * p->xwidth))) >= mem_info.npages) {
-				page_index = prev_page_index;
-				p->xpos = p->xpos_prev;
-				p->ypos = p->ypos_prev;
+				int64_t zoom_xwidth = zoom * p->xwidth;
+				int64_t lines =
+					((zoom_xwidth - 1) + mem_info.npages) / zoom_xwidth;
+				uint64_t npages = 
+					(zoom_xwidth * lines);
+				int64_t diff = (npages - mem_info.npages) / zoom;
+				int64_t last = p->xwidth - diff;
+
+				if (lines < LINES) {
+					p->ypos = lines - 1;
+					page_index = 0;
+				} else {
+					p->ypos = LINES - 3;
+					page_index = (lines - (LINES - 2)) * zoom_xwidth;
+				}
+				if (p->xpos > last - 1)
+					p->xpos = last - 1;
 			}
 		}
 		if (view == VIEW_PAGE) {
