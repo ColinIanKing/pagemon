@@ -763,6 +763,9 @@ int main(int argc, char **argv)
 		 *  handle window resizing in ugly way
 		 */
 		if (resized) {
+			uint32_t cursor_index = page_index +
+				(p->xpos + (p->ypos * p->xwidth));
+
 			delwin(mainwin);
 			endwin();
 			refresh();
@@ -777,6 +780,9 @@ int main(int argc, char **argv)
 			wbkgd(mainwin, COLOR_PAIR(RED_BLUE));
 			resized = false;
 
+			p->xpos = 0;
+			p->ypos = 0;
+			page_index = cursor_index;
 		}
 
 		/*
