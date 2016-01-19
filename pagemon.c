@@ -531,7 +531,7 @@ static inline void show_key(void)
 		wattrset(mainwin, COLOR_PAIR(WHITE_RED));
 		wprintw(mainwin, "A");
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		wprintw(mainwin, " Mapped anon/file, ");
+		wprintw(mainwin, " Anon/File, ");
 		wattrset(mainwin, COLOR_PAIR(WHITE_YELLOW));
 		wprintw(mainwin, "P");
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
@@ -757,6 +757,7 @@ int main(int argc, char **argv)
 		char curch;
 		position_t *p = &position[view];
 		uint64_t show_addr;
+		float percent;
 
 		/*
 		 *  SIGWINCH window resize triggered so
@@ -833,6 +834,7 @@ int main(int argc, char **argv)
 			position_t *pc = &position[VIEW_PAGE];
 			uint32_t cursor_index = page_index +
 				(pc->xpos + (pc->ypos * pc->xwidth));
+			percent = 100.0 * cursor_index / mem_info.npages;
 
 			map = mem_info.pages[cursor_index].map;
 			show_addr = mem_info.pages[cursor_index].addr +
@@ -857,6 +859,7 @@ int main(int argc, char **argv)
 			int32_t curxpos = p->xpos + ADDR_OFFSET;
 			uint32_t cursor_index = page_index +
 				(p->xpos + (p->ypos * p->xwidth));
+			percent = 100.0 * cursor_index / mem_info.npages;
 
 			map = mem_info.pages[cursor_index].map;
 			show_addr = mem_info.pages[cursor_index].addr;
@@ -885,6 +888,7 @@ int main(int argc, char **argv)
 				map->name[0] == '\0' ?
 					"[Anonymous]" : basename(map->name));
 		}
+		mvwprintw(mainwin, 0, COLS - 8, " %6.1f%%", percent * zoom);
 
 		wrefresh(mainwin);
 		refresh();
