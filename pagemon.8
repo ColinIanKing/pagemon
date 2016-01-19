@@ -15,6 +15,7 @@
 .\" .br        insert line break
 .\" .sp <n>    insert n+1 empty lines
 .\" for manpage-specific macros, see man(7)
+.nr SS ((\n[.l] - \n[.i]) / 1n - 24)
 .SH NAME
 pagemon \- a tool to monitor memory pages.
 .br
@@ -54,6 +55,28 @@ the value the longer time between dirty page checks.
 specify the default zoom level on page view, the default is 1 (that is 1-to-1
 view of pages).  Higher values increase the zoom level so more pages are
 represented in the map view.  add timestamp (the "whence" info) to the output.
+.SH KEYS
+.TS
+expand;
+lB lBw(\n[SS]n)
+l l.
+Key	Explanation
+Home	Move cursor to start of memory
+Cursor Up	Move cursor up
+Cursor Down	Move cursor down
+Cursor Left	Move cursor left
+Cursor Right	Move cursor right
+Page Up	Move cursor 1/2 page up
+Page Down	Move cursor 1/2 page down
+Esc, q, Q	Quit
+Enter	Toggle page map / memory map view
+Tab	Toggle detailed view of page
+v, V	Toggle Virtual Memory statistics of process
+?, h	Toggle help
+r, R	Force all pages in process to be read into memory
++, z	Zoom in (only in page map view)
+-, Z	Zoom out (only in page map view)
+.TE
 .SH EXAMPLES
 .LP
 Monitor the thunderbird process:
