@@ -313,7 +313,7 @@ static void show_page_bits(
 		"   Soft-dirty PTE:      %3s%21s",
 		(info & PAGE_PTE_SOFT_DIRTY) ? "Yes" : "No ", "");
 	mvwprintw(mainwin, 13, 4,
-		"   Exlusively Mapped:   %3s%21s",
+		"   Exclusively Mapped:  %3s%21s",
 		(info & PAGE_EXCLUSIVE_MAPPED) ? "Yes" : "No ", "");
 	mvwprintw(mainwin, 14, 4,
 		"   File or Shared Anon: %3s%21s",
