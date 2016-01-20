@@ -1079,7 +1079,7 @@ int main(int argc, char **argv)
 			} else {
 				p->ypos = LINES - 3;
 				data_index = page_size -
-					(p->xmax * (LINES - 2));
+					((int64_t)p->xmax * (LINES - 2));
 			}
 			p->xpos = p->xmax - 1;
 			break;
@@ -1154,7 +1154,7 @@ int main(int argc, char **argv)
 		} else {
 			if ((uint64_t)page_index + ((int64_t)zoom * (p->xpos +
 			    (p->ypos * p->xmax))) >= mem_info.npages) {
-				int64_t zoom_xmax = zoom * p->xmax;
+				int64_t zoom_xmax = (int64_t)zoom * p->xmax;
 				int64_t lines =
 					((zoom_xmax - 1) + mem_info.npages) / zoom_xmax;
 				uint64_t npages = 
