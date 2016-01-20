@@ -48,6 +48,9 @@
 #define MIN_ZOOM		(1)
 #define MAX_ZOOM		(999)
 
+#define MAXIMUM(a, b)		((a) > (b) ? (a) : (b))
+#define MINIMUM(a, b)		((a) < (b) ? (a) : (b))
+
 #define BLINK_MASK		(0x20)
 
 #define OK			(0)
@@ -823,10 +826,8 @@ int main(int argc, char **argv)
 		if (auto_zoom) {
 			int64_t window_pages = p->xwidth * (LINES - 3);
 			zoom = mem_info.npages / window_pages;
-			if (zoom > MAX_ZOOM)
-				zoom = MAX_ZOOM;
-			if (zoom < MIN_ZOOM)
-				zoom = MIN_ZOOM;
+			zoom = MINIMUM(MAX_ZOOM, zoom);
+			zoom = MAXIMUM(MIN_ZOOM, zoom);
 		}
 
 		if (opt_flags & OPT_FLAG_READ_ALL_PAGES) {
@@ -962,8 +963,7 @@ int main(int argc, char **argv)
 			/* Zoom in */
 			if (view == VIEW_PAGE) {
 				zoom++ ;
-				if (zoom > MAX_ZOOM)
-					zoom = MAX_ZOOM;
+				zoom = MINIMUM(MAX_ZOOM, zoom);
 				reset_cursor(p, &data_index, &page_index);
 			}
 			break;
@@ -972,22 +972,19 @@ int main(int argc, char **argv)
 			/* Zoom out */
 			if (view == VIEW_PAGE) {
 				zoom--;
-				if (zoom < MIN_ZOOM)
-					zoom = MIN_ZOOM;
+				zoom = MAXIMUM(MIN_ZOOM, zoom);
 				reset_cursor(p, &data_index, &page_index);
 			}
 			break;
 		case 't':
 			/* Tick increase */
 			ticks++;
-			if (ticks > MAX_TICKS)
-				ticks = MAX_TICKS;
+			ticks = MINIMUM(MAX_TICKS, ticks);
 			break;
 		case 'T':
 			/* Tick decrease */
 			ticks--;
-			if (ticks < MIN_TICKS)
-				ticks = MIN_TICKS;
+			ticks = MAXIMUM(MIN_TICKS, ticks);
 			break;
 		case KEY_DOWN:
 			blink = 0;
