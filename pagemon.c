@@ -263,6 +263,7 @@ static void show_usage(void)
 {
 	printf(APP_NAME ", version " VERSION "\n\n"
 		"Usage: " APP_NAME " [options]\n"
+		" -a        enable automatic zoom mode\n"
 		" -d        delay in microseconds between refreshes, default 10000\n"
 		" -h        help\n"
 		" -p pid    process ID to monitor\n"
