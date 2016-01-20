@@ -381,8 +381,8 @@ static void show_page_bits(
  *	show page mapping
  */
 static int show_pages(
-	const int32_t cursor_index,
-	const int32_t page_index,
+	const int64_t cursor_index,
+	const int64_t page_index,
 	const int32_t xmax,
 	const int32_t zoom)
 {
@@ -816,7 +816,7 @@ int main(int argc, char **argv)
 		 *  handle window resizing in ugly way
 		 */
 		if (resized) {
-			uint32_t cursor_index = page_index +
+			int64_t cursor_index = page_index +
 				(p->xpos + (p->ypos * p->xmax));
 
 			delwin(mainwin);
@@ -891,7 +891,7 @@ int main(int argc, char **argv)
 		if (view == VIEW_MEM) {
 			int32_t curxpos = (p->xpos * 3) + ADDR_OFFSET;
 			position_t *pc = &position[VIEW_PAGE];
-			uint32_t cursor_index = page_index +
+			int64_t cursor_index = page_index +
 				(pc->xpos + (pc->ypos * pc->xmax));
 			percent = 100.0 * cursor_index / mem_info.npages;
 
@@ -916,7 +916,7 @@ int main(int argc, char **argv)
 			mvwprintw(mainwin, p->ypos + 1, curxpos, "%c", curch);
 		} else {
 			int32_t curxpos = p->xpos + ADDR_OFFSET;
-			uint32_t cursor_index = page_index +
+			int64_t cursor_index = page_index +
 				zoom * (p->xpos + (p->ypos * p->xmax));
 			percent = 100.0 * cursor_index / mem_info.npages;
 
@@ -1119,7 +1119,7 @@ int main(int argc, char **argv)
 		}
 		if (view == VIEW_MEM) {
 			position_t *pc = &position[VIEW_PAGE];
-			uint32_t cursor_index = page_index +
+			int64_t cursor_index = page_index +
 				(pc->xpos + (pc->ypos * pc->xmax));
 			uint64_t addr = mem_info.pages[cursor_index].addr +
 				data_index + (p->xpos + (p->ypos * p->xmax));
