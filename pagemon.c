@@ -286,7 +286,8 @@ static void show_page_bits(
 		" Prot:      %4.4s%32s",
 		map->attr, "");
 	mvwprintw(mainwin, 8, 4,
-		" Process:   %-35.35s ", basename(map->name));
+		" Map Name:  %-35.35s ", map->name[0] == '\0' ?
+			"[Anonymous]" : basename(map->name));
 
 	offset = sizeof(uint64_t) * (mem_info.pages[index].addr / page_size);
 	if (lseek(fd, offset, SEEK_SET) == (off_t)-1)
