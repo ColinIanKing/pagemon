@@ -389,7 +389,7 @@ static int show_pages(
 	int32_t i;
 	uint64_t index = page_index;
 	int fd;
-	map_t *map = mem_info.pages[index].map;
+	map_t *map = mem_info.pages[cursor_index].map;
 
 	if ((fd = open(path_pagemap, O_RDONLY)) < 0)
 		return ERR_NO_MAP_INFO;
