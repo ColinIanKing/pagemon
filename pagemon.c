@@ -867,7 +867,7 @@ int main(int argc, char **argv)
 		    ((rc = read_maps()) < 0))
 			break;
 
-		if (auto_zoom) {
+		if ((view == VIEW_PAGE) && auto_zoom) {
 			int32_t window_pages = p->xmax * (LINES - 3);
 			zoom = mem_info.npages / window_pages;
 			zoom = MINIMUM(MAX_ZOOM, zoom);
