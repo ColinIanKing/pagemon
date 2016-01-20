@@ -104,10 +104,8 @@ typedef struct {
 typedef struct {
 	map_t maps[MAX_MMAPS];		/* Mappings */
 	uint32_t nmaps;			/* Number of mappings */
-
 	page_t *pages;			/* Pages */
 	uint64_t npages;		/* Number of pages */
-
 	uint64_t last_addr;		/* Last address */
 } mem_info_t;
 
@@ -227,7 +225,6 @@ static int read_maps(void)
 		return ERR_ALLOC_NOMEM;
 
 	mem_info.last_addr = last_addr;
-
 	for (i = 0; i < mem_info.nmaps; i++) {
 		uint64_t count = (mem_info.maps[i].end -
 				  mem_info.maps[i].begin) / page_size;
@@ -323,7 +320,6 @@ static void show_page_bits(
 	char buf[16];
 
 	mem_to_str(map->end - map->begin, buf, sizeof(buf) - 1);
-
 	wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
 	mvwprintw(mainwin, 3, 4,
 		" Page:      0x%16.16" PRIx64 "%18s",
@@ -841,7 +837,6 @@ int main(int argc, char **argv)
 			mainwin = newwin(LINES, COLS, 0, 0);
 			wbkgd(mainwin, COLOR_PAIR(RED_BLUE));
 			resized = false;
-
 			p->xpos = 0;
 			p->ypos = 0;
 			page_index = cursor_index;
