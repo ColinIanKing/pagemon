@@ -901,7 +901,8 @@ int main(int argc, char **argv)
 			position_t *pc = &position[VIEW_PAGE];
 			int64_t cursor_index = page_index +
 				(pc->xpos + (pc->ypos * pc->xmax));
-			percent = 100.0 * cursor_index / mem_info.npages;
+			percent = (mem_info.npages > 0) ?
+				100.0 * cursor_index / mem_info.npages : 100;
 
 			map = mem_info.pages[cursor_index].map;
 			show_addr = mem_info.pages[cursor_index].addr +
