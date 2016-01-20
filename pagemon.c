@@ -112,7 +112,7 @@ typedef struct {
 	int32_t xpos_prev;		/* Previous x position */
 	int32_t ypos_prev;		/* Previous y position */
 	int32_t ypos_max;		/* Max y position */
-	int32_t xwidth;			/* Width of x */
+	int32_t xmax;			/* Width of x */
 } position_t;
 
 /* I dislike globals, but it saves passing these around a lot */
@@ -346,7 +346,7 @@ static void show_page_bits(
 static int show_pages(
 	const int32_t cursor_index,
 	const int32_t page_index,
-	const int32_t xwidth,
+	const int32_t xmax,
 	const int32_t zoom)
 {
 	int32_t i;
@@ -370,7 +370,7 @@ static int show_pages(
 			mvwprintw(mainwin, i, 0, "%16.16" PRIx64 " ", addr);
 		}
 
-		for (j = 0; j < xwidth; j++) {
+		for (j = 0; j < xmax; j++) {
 			char state = '.';
 			int attr = COLOR_PAIR(BLACK_WHITE);
 
@@ -429,7 +429,7 @@ static int show_memory(
 	const int64_t page_index,
 	int64_t data_index,
 	const uint32_t page_size,
-	const int32_t xwidth)
+	const int32_t xmax)
 {
 	int32_t i;
 	uint64_t index = page_index;
@@ -441,14 +441,14 @@ static int show_memory(
 
 	for (i = 1; i < LINES - 1; i++) {
 		int32_t j;
-		uint8_t bytes[xwidth];
+		uint8_t bytes[xmax];
 		ssize_t nread = 0;
 
 		addr = mem_info.pages[index].addr + data_index;
 		if (lseek(fd, (off_t)addr, SEEK_SET) == (off_t)-1) {
 			nread = -1;
 		} else {
-			nread = read(fd, bytes, (size_t)xwidth);
+			nread = read(fd, bytes, (size_t)xmax);
 			if (nread < 0)
 				nread = -1;
 		}
@@ -460,7 +460,7 @@ static int show_memory(
 			mvwprintw(mainwin, i, 0, "%16.16" PRIx64 " ", addr);
 		mvwprintw(mainwin, i, COLS - 3, "   ", addr);
 
-		for (j = 0; j < xwidth; j++) {
+		for (j = 0; j < xmax; j++) {
 			uint8_t byte;
 			addr = mem_info.pages[index].addr + data_index;
 			if ((index >= mem_info.npages) ||
@@ -468,7 +468,7 @@ static int show_memory(
 				/* End of memory */
 				wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
 				mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "   ");
-				mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xwidth) + j, " ");
+				mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xmax) + j, " ");
 				goto do_border;
 			}
 			if (j > nread) {
@@ -476,7 +476,7 @@ static int show_memory(
 				wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
 				mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "?? ");
 				wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-				mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xwidth) + j, "?");
+				mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xmax) + j, "?");
 				goto do_border;
 			}
 
@@ -486,11 +486,11 @@ static int show_memory(
 			mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "%2.2" PRIx8 " ", byte);
 			wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
 			byte &= 0x7f;
-			mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xwidth) + j, "%c",
+			mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xmax) + j, "%c",
 				(byte < 32 || byte > 126) ? '.' : byte);
 do_border:
 			wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-			mvwprintw(mainwin, i, 16 + (HEX_WIDTH * xwidth), " ");
+			mvwprintw(mainwin, i, 16 + (HEX_WIDTH * xmax), " ");
 			data_index++;
 			if (data_index >= page_size) {
 				data_index -= page_size;
@@ -606,19 +606,19 @@ static inline void show_help(void)
 }
 
 /*
- *  update_xwidth()
- *	set the xwidth scale for a specific view v
+ *  update_xmax()
+ *	set the xmax scale for a specific view v
  *	based on column width and scaling factor for
  *	page or mem (hex) views
  */
-static inline void update_xwidth(position_t *position, int v)
+static inline void update_xmax(position_t *position, int v)
 {
-	static int32_t xwidth_scale[] = {
+	static int32_t xmax_scale[] = {
 		1,	/* VIEW_PAGE */
 		4	/* VIEW_MEM */
 	};
 
-	position[v].xwidth = (COLS - ADDR_OFFSET) / xwidth_scale[v];
+	position[v].xmax = (COLS - ADDR_OFFSET) / xmax_scale[v];
 }
 
 /*
@@ -764,8 +764,8 @@ int main(int argc, char **argv)
 	init_pair(BLACK_BLACK, COLOR_BLACK, COLOR_BLACK);
 	init_pair(BLUE_WHITE, COLOR_BLUE, COLOR_WHITE);
 
-	update_xwidth(position, 0);
-	update_xwidth(position, 1);
+	update_xmax(position, 0);
+	update_xmax(position, 1);
 
 	do {
 		int ch, blink_attrs;
@@ -780,7 +780,7 @@ int main(int argc, char **argv)
 		 */
 		if (resized) {
 			uint32_t cursor_index = page_index +
-				(p->xpos + (p->ypos * p->xwidth));
+				(p->xpos + (p->ypos * p->xmax));
 
 			delwin(mainwin);
 			endwin();
@@ -815,7 +815,7 @@ int main(int argc, char **argv)
 			continue;	
 		}
 
-		update_xwidth(position, view);
+		update_xmax(position, view);
 		wbkgd(mainwin, COLOR_PAIR(RED_BLUE));
 
 		if ((view == VIEW_PAGE) &&
@@ -823,7 +823,7 @@ int main(int argc, char **argv)
 			break;
 
 		if (auto_zoom) {
-			int64_t window_pages = p->xwidth * (LINES - 3);
+			int64_t window_pages = p->xmax * (LINES - 3);
 			zoom = mem_info.npages / window_pages;
 			zoom = MINIMUM(MAX_ZOOM, zoom);
 			zoom = MAXIMUM(MIN_ZOOM, zoom);
@@ -855,13 +855,13 @@ int main(int argc, char **argv)
 			int32_t curxpos = (p->xpos * 3) + ADDR_OFFSET;
 			position_t *pc = &position[VIEW_PAGE];
 			uint32_t cursor_index = page_index +
-				(pc->xpos + (pc->ypos * pc->xwidth));
+				(pc->xpos + (pc->ypos * pc->xmax));
 			percent = 100.0 * cursor_index / mem_info.npages;
 
 			map = mem_info.pages[cursor_index].map;
 			show_addr = mem_info.pages[cursor_index].addr +
-				data_index + (p->xpos + (p->ypos * p->xwidth));
-			if (show_memory(cursor_index, data_index, page_size, p->xwidth) < 0)
+				data_index + (p->xpos + (p->ypos * p->xmax));
+			if (show_memory(cursor_index, data_index, page_size, p->xmax) < 0)
 				break;
 
 			blink_attrs = A_BOLD | ((blink & BLINK_MASK) ?
@@ -873,19 +873,19 @@ int main(int argc, char **argv)
 
 			blink_attrs = A_BOLD | ((blink & BLINK_MASK) ?
 				COLOR_PAIR(BLACK_WHITE) : COLOR_PAIR(WHITE_BLACK));
-			curxpos = ADDR_OFFSET + (p->xwidth * 3) + p->xpos;
+			curxpos = ADDR_OFFSET + (p->xmax * 3) + p->xpos;
 			wattrset(mainwin, blink_attrs);
 			curch = mvwinch(mainwin, p->ypos + 1, curxpos) & A_CHARTEXT;
 			mvwprintw(mainwin, p->ypos + 1, curxpos, "%c", curch);
 		} else {
 			int32_t curxpos = p->xpos + ADDR_OFFSET;
 			uint32_t cursor_index = page_index +
-				(p->xpos + (p->ypos * p->xwidth));
+				(p->xpos + (p->ypos * p->xmax));
 			percent = 100.0 * cursor_index / mem_info.npages;
 
 			map = mem_info.pages[cursor_index].map;
 			show_addr = mem_info.pages[cursor_index].addr;
-			show_pages(cursor_index, page_index, p->xwidth, zoom);
+			show_pages(cursor_index, page_index, p->xmax, zoom);
 		
 			blink_attrs = A_BOLD | ((blink & BLINK_MASK) ?
 				COLOR_PAIR(BLACK_WHITE) : COLOR_PAIR(WHITE_BLACK));
@@ -1028,15 +1028,15 @@ int main(int argc, char **argv)
 
 		position[VIEW_PAGE].ypos_max =
 			(((mem_info.npages - page_index) / zoom) - p->xpos) /
-			position[0].xwidth;
+			position[0].xmax;
 		position[VIEW_MEM].ypos_max = LINES - 2;
 
-		if (p->xpos >= p->xwidth) {
+		if (p->xpos >= p->xmax) {
 			p->xpos = 0;
 			p->ypos++;
 		}
 		if (p->xpos < 0) {
-			p->xpos = p->xwidth - 1;
+			p->xpos = p->xmax - 1;
 			p->ypos--;
 		}
 
@@ -1048,7 +1048,7 @@ int main(int argc, char **argv)
 		 */
 		if (view == VIEW_MEM) {
 			if (p->ypos > LINES - 3) {
-				data_index += p->xwidth *
+				data_index += p->xmax *
 					(p->ypos - (LINES - 3));
 				p->ypos = LINES - 3;
 				if (data_index >= page_size) {
@@ -1057,7 +1057,7 @@ int main(int argc, char **argv)
 				}
 			}
 			if (p->ypos < 0) {
-				data_index -= p->xwidth * (-p->ypos);
+				data_index -= p->xmax * (-p->ypos);
 				p->ypos = 0;
 				if (data_index < 0) {
 					data_index += page_size;
@@ -1066,12 +1066,12 @@ int main(int argc, char **argv)
 			}
 		} else {
 			if (p->ypos > LINES - 3) {
-				page_index += zoom * p->xwidth *
+				page_index += zoom * p->xmax *
 					(p->ypos - (LINES - 3));
 				p->ypos = LINES - 3;
 			}
 			if (p->ypos < 0) {
-				page_index -= zoom * p->xwidth * (-p->ypos);
+				page_index -= zoom * p->xmax * (-p->ypos);
 				p->ypos = 0;
 			}
 		}
@@ -1083,9 +1083,9 @@ int main(int argc, char **argv)
 		if (view == VIEW_MEM) {
 			position_t *pc = &position[VIEW_PAGE];
 			uint32_t cursor_index = page_index +
-				(pc->xpos + (pc->ypos * pc->xwidth));
+				(pc->xpos + (pc->ypos * pc->xmax));
 			uint64_t addr = mem_info.pages[cursor_index].addr +
-				data_index + (p->xpos + (p->ypos * p->xwidth));
+				data_index + (p->xpos + (p->ypos * p->xmax));
 			if (addr >= mem_info.last_addr) {
 				page_index = prev_page_index;
 				data_index = prev_data_index;
@@ -1094,21 +1094,21 @@ int main(int argc, char **argv)
 			}
 		} else {
 			if ((uint64_t)page_index + (zoom * (p->xpos +
-			    (p->ypos * p->xwidth))) >= mem_info.npages) {
-				int64_t zoom_xwidth = zoom * p->xwidth;
+			    (p->ypos * p->xmax))) >= mem_info.npages) {
+				int64_t zoom_xmax = zoom * p->xmax;
 				int64_t lines =
-					((zoom_xwidth - 1) + mem_info.npages) / zoom_xwidth;
+					((zoom_xmax - 1) + mem_info.npages) / zoom_xmax;
 				uint64_t npages = 
-					(zoom_xwidth * lines);
+					(zoom_xmax * lines);
 				int64_t diff = (npages - mem_info.npages) / zoom;
-				int64_t last = p->xwidth - diff;
+				int64_t last = p->xmax - diff;
 
 				if (lines < LINES) {
 					p->ypos = lines - 1;
 					page_index = 0;
 				} else {
 					p->ypos = LINES - 3;
-					page_index = (lines - (LINES - 2)) * zoom_xwidth;
+					page_index = (lines - (LINES - 2)) * zoom_xmax;
 				}
 				if (p->xpos > last - 1)
 					p->xpos = last - 1;
