@@ -149,10 +149,7 @@ static void mem_to_str(const uint64_t val, char *buf, const size_t buflen)
 
 	memset(buf, 0, buflen);
 
-	if (val < 99 * KB) {
-		scaled = val;
-		unit = 'B';
-	} else if (val < 99 * MB) {
+	if (val < 99 * MB) {
 		scaled = val / KB;
 		unit = 'K';
 	} else if (val < 99 * GB) {
