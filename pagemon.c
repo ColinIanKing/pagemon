@@ -857,7 +857,7 @@ int main(int argc, char **argv)
 			wrefresh(mainwin);
 			refresh();
 			usleep(udelay);
-			continue;	
+			continue;
 		}
 
 		update_xmax(position, view);
@@ -933,7 +933,7 @@ int main(int argc, char **argv)
 			map = mem_info.pages[cursor_index].map;
 			show_addr = mem_info.pages[cursor_index].addr;
 			show_pages(cursor_index, page_index, p->xmax, zoom);
-		
+
 			blink_attrs = A_BOLD | ((blink & BLINK_MASK) ?
 				COLOR_PAIR(BLACK_WHITE) : COLOR_PAIR(WHITE_BLACK));
 			wattrset(mainwin, blink_attrs);
@@ -1135,7 +1135,7 @@ int main(int argc, char **argv)
 			}
 		}
 		if (page_index < 0) {
-			page_index = 0;	
+			page_index = 0;
 			data_index = 0;
 			p->ypos = 0;
 		}
@@ -1157,7 +1157,7 @@ int main(int argc, char **argv)
 				int64_t zoom_xmax = (int64_t)zoom * p->xmax;
 				int64_t lines =
 					((zoom_xmax - 1) + mem_info.npages) / zoom_xmax;
-				uint64_t npages = 
+				uint64_t npages =
 					(zoom_xmax * lines);
 				int64_t diff = (npages - mem_info.npages) / zoom;
 				int64_t last = p->xmax - diff;
