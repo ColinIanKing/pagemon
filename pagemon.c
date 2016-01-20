@@ -48,6 +48,8 @@
 #define MIN_ZOOM		(1)
 #define MAX_ZOOM		(999)
 
+#define BLINK_MASK		(0x20)
+
 #define OK			(0)
 #define ERR_NO_MAP_INFO		(-1)
 #define ERR_NO_MEM_INFO		(-2)
@@ -118,6 +120,7 @@ static bool tab_view = false;		/* Page pop-up info */
 static bool vm_view = false;		/* Process VM stats */
 static bool help_view = false;		/* Help pop-up info */
 static bool resized = false;		/* SIGWINCH occurred */
+static bool auto_zoom = false;		/* Automatic zoom */
 static uint8_t view = VIEW_PAGE;	/* Default page or memory view */
 static uint8_t opt_flags;		/* User option flags */
 WINDOW *mainwin = NULL;			/* curses main window */
@@ -814,6 +817,15 @@ int main(int argc, char **argv)
 		    ((rc = read_maps()) < 0))
 			break;
 
+		if (auto_zoom) {
+			int64_t window_pages = p->xwidth * (LINES - 3);
+			zoom = mem_info.npages / window_pages;
+			if (zoom > MAX_ZOOM)
+				zoom = MAX_ZOOM;
+			if (zoom < MIN_ZOOM)
+				zoom = MIN_ZOOM;
+		}
+
 		if (opt_flags & OPT_FLAG_READ_ALL_PAGES) {
 			read_all_pages();
 			opt_flags &= ~OPT_FLAG_READ_ALL_PAGES;
@@ -849,14 +861,14 @@ int main(int argc, char **argv)
 			if (show_memory(cursor_index, data_index, page_size, p->xwidth) < 0)
 				break;
 
-			blink_attrs = A_BOLD | ((blink & 0x20) ?
+			blink_attrs = A_BOLD | ((blink & BLINK_MASK) ?
 				COLOR_PAIR(WHITE_BLUE) :
 				COLOR_PAIR(BLUE_WHITE));
 			wattrset(mainwin, blink_attrs);
 			curch = mvwinch(mainwin, p->ypos + 1, curxpos) & A_CHARTEXT;
 			mvwprintw(mainwin, p->ypos + 1, curxpos, "%c", curch);
 
-			blink_attrs = A_BOLD | ((blink & 0x20) ?
+			blink_attrs = A_BOLD | ((blink & BLINK_MASK) ?
 				COLOR_PAIR(BLACK_WHITE) : COLOR_PAIR(WHITE_BLACK));
 			curxpos = ADDR_OFFSET + (p->xwidth * 3) + p->xpos;
 			wattrset(mainwin, blink_attrs);
@@ -872,7 +884,7 @@ int main(int argc, char **argv)
 			show_addr = mem_info.pages[cursor_index].addr;
 			show_pages(cursor_index, page_index, p->xwidth, zoom);
 		
-			blink_attrs = A_BOLD | ((blink & 0x20) ?
+			blink_attrs = A_BOLD | ((blink & BLINK_MASK) ?
 				COLOR_PAIR(BLACK_WHITE) : COLOR_PAIR(WHITE_BLACK));
 			wattrset(mainwin, blink_attrs);
 			curch = mvwinch(mainwin, p->ypos + 1, curxpos) & A_CHARTEXT;
@@ -884,12 +896,13 @@ int main(int argc, char **argv)
 		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
 		if (!map) {
 			mvwprintw(mainwin, 0, 0,
-				"Pagemon 0x---------------- Zoom x %-3d ",
-				zoom);
+				"Pagemon 0x---------------- %4.4s x %-3d ",
+				auto_zoom && ((blink & BLINK_MASK))  ? "Auto" : "Zoom", zoom);
 			wprintw(mainwin, "---- --:-- %-20.20s", "[Not Mapped]");
 		} else {
 			mvwprintw(mainwin, 0, 0, "Pagemon 0x%16.16" PRIx64
-				" Zoom x %-3d ", show_addr, zoom);
+				" %4.4s x %-3d ", show_addr,
+				auto_zoom && ((blink & BLINK_MASK)) ? "Auto" : "Zoom", zoom);
 			wprintw(mainwin, "%s %s %-20.20s",
 				map->attr, map->dev,
 				map->name[0] == '\0' ?
@@ -929,6 +942,11 @@ int main(int argc, char **argv)
 		case 'r':
 		case 'R':
 			read_all_pages();
+			break;
+		case 'a':
+		case 'A':
+			/* Toggle auto zoom */
+			auto_zoom = !auto_zoom;
 			break;
 		case '\n':
 			/* Toggle MAP / MEMORY views */
