@@ -42,6 +42,12 @@
 #define VIEW_PAGE		(0)
 #define VIEW_MEM		(1)
 
+#define MIN_TICKS		(1)
+#define MAX_TICKS		(1000)
+
+#define MIN_ZOOM		(1)
+#define MAX_ZOOM		(999)
+
 #define OK			(0)
 #define ERR_NO_MAP_INFO		(-1)
 #define ERR_NO_MEM_INFO		(-2)
@@ -674,14 +680,14 @@ int main(int argc, char **argv)
 			break;
 		case 't':
 			ticks = strtol(optarg, NULL, 10);
-			if ((ticks < 1) || (ticks > 1000)) {
+			if ((ticks < MIN_TICKS) || (ticks > MAX_TICKS)) {
 				fprintf(stderr, "Invalid ticks value\n");
 				exit(EXIT_FAILURE);
 			}
 			break;
 		case 'z':
 			zoom = strtoul(optarg, NULL, 10);
-			if (errno || (zoom < 1) || (zoom > 999)) {
+			if (errno || (zoom < MIN_ZOOM) || (zoom > MAX_ZOOM)) {
 				fprintf(stderr, "Invalid zoom value\n");
 				exit(EXIT_FAILURE);
 			}
@@ -935,8 +941,8 @@ int main(int argc, char **argv)
 			/* Zoom in */
 			if (view == VIEW_PAGE) {
 				zoom++ ;
-				if (zoom > 999)
-					zoom = 999;
+				if (zoom > MAX_ZOOM)
+					zoom = MAX_ZOOM;
 				reset_cursor(p, &data_index, &page_index);
 			}
 			break;
@@ -945,8 +951,8 @@ int main(int argc, char **argv)
 			/* Zoom out */
 			if (view == VIEW_PAGE) {
 				zoom--;
-				if (zoom < 1)
-					zoom = 1;
+				if (zoom < MIN_ZOOM)
+					zoom = MIN_ZOOM;
 				reset_cursor(p, &data_index, &page_index);
 			}
 			break;
