@@ -948,7 +948,7 @@ int main(int argc, char **argv)
 				map->name[0] == '\0' ?
 					"[Anonymous]" : basename(map->name));
 		}
-		mvwprintw(mainwin, 0, COLS - 8, " %6.1f%%", percent * zoom);
+		mvwprintw(mainwin, 0, COLS - 8, " %6.1f%%", percent);
 
 		wrefresh(mainwin);
 		refresh();
