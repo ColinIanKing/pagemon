@@ -1,3 +1,17 @@
+pagemon (0.01.04-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Add key descriptions to man page
+  * Make man page source 80 column friendly
+  * Update man page with contributions info.
+  * Add position of cursor in terms of % of memory map in top right corner
+  * Fix re-sizing window, ensure cursor does not fall out side window
+  * Fix page down on page view when we reach end of memory
+  * Typo: Ex*c*lusively
+  * Don't skip anonymous regions
+
+ -- Colin King <colin.king@canonical.com>  Wed, 20 Jan 2016 00:01:02 +0000
+
 pagemon (0.01.03-1) unstable; urgency=medium
 
   * Makefile: bump version
