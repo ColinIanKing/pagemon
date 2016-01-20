@@ -1061,6 +1061,18 @@ int main(int argc, char **argv)
 		case KEY_HOME:
 			reset_cursor(p, &data_index, &page_index);
 			break;
+		case KEY_END:
+			if (view == VIEW_PAGE) {
+				page_index = mem_info.npages - 1;
+				p->xpos = 0;
+				p->ypos = LINES - 3;
+			} else {
+				p->ypos = LINES - 3;
+				data_index = page_size -
+					(p->xmax * (LINES - 2));
+			}
+			p->xpos = p->xmax - 1;
+			break;
 		}
 
 		position[VIEW_PAGE].ypos_max =
