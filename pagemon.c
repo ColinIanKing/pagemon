@@ -920,7 +920,7 @@ int main(int argc, char **argv)
 		} else {
 			int32_t curxpos = p->xpos + ADDR_OFFSET;
 			uint32_t cursor_index = page_index +
-				(p->xpos + (p->ypos * p->xmax));
+				zoom * (p->xpos + (p->ypos * p->xmax));
 			percent = 100.0 * cursor_index / mem_info.npages;
 
 			map = mem_info.pages[cursor_index].map;
