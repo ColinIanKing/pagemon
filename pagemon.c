@@ -53,6 +53,11 @@
 
 #define BLINK_MASK		(0x20)
 
+#define KB			(1024ULL)
+#define MB			(KB * KB)
+#define GB			(KB * KB * KB)
+#define TB			(KB * KB * KB * KB)
+
 #define OK			(0)
 #define ERR_NO_MAP_INFO		(-1)
 #define ERR_NO_MEM_INFO		(-2)
@@ -132,6 +137,36 @@ static char path_pagemap[PATH_MAX];
 static char path_maps[PATH_MAX];
 static char path_mem[PATH_MAX];
 static char path_status[PATH_MAX];
+
+/*
+ *  mem_to_str()
+ *	report memory in different units
+ */
+static void mem_to_str(const uint64_t val, char *buf, const size_t buflen)
+{
+	uint64_t scaled;
+	char unit;
+
+	memset(buf, 0, buflen);
+
+	if (val < 99 * KB) {
+		scaled = val;
+		unit = 'B';
+	} else if (val < 99 * MB) {
+		scaled = val / KB;
+		unit = 'K';
+	} else if (val < 99 * GB) {
+		scaled = val / MB;
+		unit = 'M';
+	} else if (val < 99 * TB) {
+		scaled = val / GB;
+		unit = 'G';
+	} else {
+		scaled = val / TB;
+		unit = 'T';
+	}
+	snprintf(buf, buflen, "%7" PRIu64 " %c", scaled, unit);
+}
 
 /*
  *  read_maps()
@@ -279,6 +314,9 @@ static void show_page_bits(
 {
 	uint64_t info;
 	off_t offset;
+	char buf[16];
+
+	mem_to_str(map->end - map->begin, buf, sizeof(buf) - 1);
 
 	wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
 	mvwprintw(mainwin, 3, 4,
@@ -291,12 +329,14 @@ static void show_page_bits(
 		" Map:       0x%16.16" PRIx64 "-%16.16" PRIx64 " ",
 		map->begin, map->end - 1);
 	mvwprintw(mainwin, 6, 4,
+		" Map Size:  %s%27s", buf, "");
+	mvwprintw(mainwin, 7, 4,
 		" Device:    %5.5s%31s",
 		map->dev, "");
-	mvwprintw(mainwin, 7, 4,
+	mvwprintw(mainwin, 8, 4,
 		" Prot:      %4.4s%32s",
 		map->attr, "");
-	mvwprintw(mainwin, 8, 4,
+	mvwprintw(mainwin, 9, 4,
 		" Map Name:  %-35.35s ", map->name[0] == '\0' ?
 			"[Anonymous]" : basename(map->name));
 
@@ -306,34 +346,34 @@ static void show_page_bits(
 	if (read(fd, &info, sizeof(info)) != sizeof(info))
 		return;
 
-	mvwprintw(mainwin, 9, 4,
+	mvwprintw(mainwin, 10, 4,
 		" Flag:      0x%16.16" PRIx64 "%18s", info, "");
 	if (info & PAGE_SWAPPED) {
-		mvwprintw(mainwin, 10, 4,
+		mvwprintw(mainwin, 11, 4,
 			"   Swap Type:           0x%2.2" PRIx64 "%20s",
 			info & 0x1f, "");
-		mvwprintw(mainwin, 11, 4,
+		mvwprintw(mainwin, 12, 4,
 			"   Swap Offset:         0x%16.16" PRIx64 "%6s",
 			(info & 0x00ffffffffffffffULL) >> 5, "");
 	} else {
-		mvwprintw(mainwin, 10, 4, "%48s", "");
-		mvwprintw(mainwin, 11, 4,
+		mvwprintw(mainwin, 11, 4, "%48s", "");
+		mvwprintw(mainwin, 12, 4,
 			"   Page Frame Number:   0x%16.16" PRIx64 "%6s",
 			info & 0x00ffffffffffffffULL, "");
 	}
-	mvwprintw(mainwin, 12, 4,
+	mvwprintw(mainwin, 13, 4,
 		"   Soft-dirty PTE:      %3s%21s",
 		(info & PAGE_PTE_SOFT_DIRTY) ? "Yes" : "No ", "");
-	mvwprintw(mainwin, 13, 4,
+	mvwprintw(mainwin, 14, 4,
 		"   Exclusively Mapped:  %3s%21s",
 		(info & PAGE_EXCLUSIVE_MAPPED) ? "Yes" : "No ", "");
-	mvwprintw(mainwin, 14, 4,
+	mvwprintw(mainwin, 15, 4,
 		"   File or Shared Anon: %3s%21s",
 		(info & PAGE_FILE_SHARED_ANON) ? "Yes" : "No ", "");
-	mvwprintw(mainwin, 15, 4,
+	mvwprintw(mainwin, 16, 4,
 		"   Present in Swap:     %3s%21s",
 		(info & PAGE_SWAPPED) ? "Yes" : "No ", "");
-	mvwprintw(mainwin, 16, 4,
+	mvwprintw(mainwin, 17, 4,
 		"   Present in RAM:      %3s%21s",
 		(info & PAGE_PRESENT) ? "Yes" : "No ", "");
 }
