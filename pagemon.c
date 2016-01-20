@@ -868,7 +868,7 @@ int main(int argc, char **argv)
 			break;
 
 		if (auto_zoom) {
-			int64_t window_pages = p->xmax * (LINES - 3);
+			int32_t window_pages = p->xmax * (LINES - 3);
 			zoom = mem_info.npages / window_pages;
 			zoom = MINIMUM(MAX_ZOOM, zoom);
 			zoom = MAXIMUM(MIN_ZOOM, zoom);
@@ -1151,7 +1151,7 @@ int main(int argc, char **argv)
 				p->ypos = p->ypos_prev;
 			}
 		} else {
-			if ((uint64_t)page_index + (zoom * (p->xpos +
+			if ((uint64_t)page_index + ((int64_t)zoom * (p->xpos +
 			    (p->ypos * p->xmax))) >= mem_info.npages) {
 				int64_t zoom_xmax = zoom * p->xmax;
 				int64_t lines =
