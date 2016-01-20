@@ -654,11 +654,14 @@ int main(int argc, char **argv)
 	memset(position, 0, sizeof(position));
 
 	for (;;) {
-		int c = getopt(argc, argv, "d:hp:rt:z:");
+		int c = getopt(argc, argv, "ad:hp:rt:z:");
 
 		if (c == -1)
 			break;
 		switch (c) {
+		case 'a':
+			auto_zoom = true;
+			break;
 		case 'd':
 			udelay = strtoul(optarg, NULL, 10);
 			if (errno) {
