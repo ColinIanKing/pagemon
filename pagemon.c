@@ -956,6 +956,18 @@ int main(int argc, char **argv)
 				reset_cursor(p, &data_index, &page_index);
 			}
 			break;
+		case 't':
+			/* Tick increase */
+			ticks++;
+			if (ticks > MAX_TICKS)
+				ticks = MAX_TICKS;
+			break;
+		case 'T':
+			/* Tick decrease */
+			ticks--;
+			if (ticks < MIN_TICKS)
+				ticks = MIN_TICKS;
+			break;
 		case KEY_DOWN:
 			blink = 0;
 			if (view == VIEW_PAGE)
