@@ -937,8 +937,8 @@ int main(int argc, char **argv)
 				zoom++ ;
 				if (zoom > 999)
 					zoom = 999;
+				reset_cursor(p, &data_index, &page_index);
 			}
-			reset_cursor(p, &data_index, &page_index);
 			break;
 		case '-':
 		case 'Z':
@@ -947,8 +947,8 @@ int main(int argc, char **argv)
 				zoom--;
 				if (zoom < 1)
 					zoom = 1;
+				reset_cursor(p, &data_index, &page_index);
 			}
-			reset_cursor(p, &data_index, &page_index);
 			break;
 		case KEY_DOWN:
 			blink = 0;
