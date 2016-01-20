@@ -288,14 +288,22 @@ static void show_vm(void)
 	wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
 		char vmname[9], size[8];
+		char state[6], longstate[13];
 		uint64_t sz;
 
-		if (sscanf(buffer, "Vm%8s %" SCNu64 "%7s",
-		    vmname, &sz, size) != 3)
+		if (sscanf(buffer, "State: %5s %12s", state, longstate) == 2) {
+			mvwprintw(mainwin, y, 54, "State:    %-12.12s",
+				longstate);
+			y++;
 			continue;
-		mvwprintw(mainwin, y, 54, "Vm%-6.6s %10" PRIu64 " %s",
-			vmname, sz, size);
-		y++;
+		}
+		if (sscanf(buffer, "Vm%8s %" SCNu64 "%7s",
+		    vmname, &sz, size) == 3) {
+			mvwprintw(mainwin, y, 54, "Vm%-6.6s %10" PRIu64 " %s",
+				vmname, sz, size);
+			y++;
+			continue;
+		}
 	}
 	fclose(fp);
 }
