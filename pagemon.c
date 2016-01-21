@@ -128,6 +128,7 @@ typedef struct {
 	bool vm_view;			/* Process VM stats */
 	bool help_view;			/* Help pop-up info */
 	bool resized;			/* SIGWINCH occurred */
+	bool terminate;			/* SIGSEGV termination */
 	bool auto_zoom;			/* Automatic zoom */
 	uint8_t view;			/* Default page or memory view */
 	uint8_t opt_flags;		/* User option flags */
@@ -254,6 +255,17 @@ static void handle_winch(int sig)
 	(void)sig;
 
 	g.resized = true;
+}
+
+/*
+ *  handle_terminate()
+ *	handle termination signals
+ */
+static void handle_terminate(int sig)
+{
+	(void)sig;
+
+	g.terminate = true;
 }
 
 /*
@@ -710,7 +722,6 @@ int main(int argc, char **argv)
 	int32_t tick = 0, ticks = 60, blink = 0, zoom = 1;
 	pid_t pid = -1;
 	int rc = OK, ret;
-	bool do_run = true;
 
 	for (;;) {
 		int c = getopt(argc, argv, "ad:hp:rt:vz:");
@@ -790,6 +801,16 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Could not set up window resizing handler\n");
 		exit(EXIT_FAILURE);
 	}
+	memset(&action, 0, sizeof(action));
+	action.sa_handler = handle_terminate;
+	if (sigaction(SIGSEGV, &action, NULL) < 0) {
+		fprintf(stderr, "Could not set up error handler\n");
+		exit(EXIT_FAILURE);
+	}
+	if (sigaction(SIGBUS, &action, NULL) < 0) {
+		fprintf(stderr, "Could not set up error handler\n");
+		exit(EXIT_FAILURE);
+	}
 
 	snprintf(g.path_refs, sizeof(g.path_refs),
 		"/proc/%i/clear_refs", pid);
@@ -802,7 +823,6 @@ int main(int argc, char **argv)
 	snprintf(g.path_status, sizeof(g.path_status),
 		"/proc/%i/status", pid);
 
-	g.resized = false;
 	initscr();
 	start_color();
 	cbreak();
@@ -1012,7 +1032,7 @@ force_ch:
 		case 'q':
 		case 'Q':
 			/* Quit */
-			do_run = false;
+			g.terminate = true;
 			break;
 		case '\t':
 			/* Toggle Tab view */
@@ -1232,7 +1252,7 @@ force_ch:
 			}
 		}
 		usleep(udelay);
-	} while (do_run);
+	} while (!g.terminate);
 
 	endwin();
 
