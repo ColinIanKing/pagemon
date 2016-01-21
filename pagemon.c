@@ -115,7 +115,8 @@ typedef struct {
 	int32_t xpos_prev;		/* Previous x position */
 	int32_t ypos_prev;		/* Previous y position */
 	int32_t ypos_max;		/* Max y position */
-	int32_t xmax;			/* Width of x */
+	int32_t xmax;			/* Width */
+	int32_t ymax;			/* Height */
 } position_t;
 
 /* I dislike globals, but it saves passing these around a lot */
@@ -148,8 +149,6 @@ static void mem_to_str(const uint64_t val, char *buf, const size_t buflen)
 {
 	uint64_t scaled;
 	char unit;
-
-	memset(buf, 0, buflen);
 
 	if (val < 99 * MB) {
 		scaled = val / KB;
@@ -396,6 +395,7 @@ static int show_pages(
 	const int64_t cursor_index,
 	const int64_t page_index,
 	const int32_t xmax,
+	const int32_t ymax,
 	const int32_t zoom)
 {
 	int32_t i;
@@ -408,7 +408,7 @@ static int show_pages(
 	if ((fd = open(g.path_pagemap, O_RDONLY)) < 0)
 		return ERR_NO_MAP_INFO;
 
-	for (i = 1; i < LINES - 1; i++) {
+	for (i = 1; i <= ymax; i++) {
 		uint64_t info;
 		int32_t j;
 
@@ -485,7 +485,8 @@ static int show_pages(
 static int show_memory(
 	const int64_t page_index,
 	int64_t data_index,
-	const int32_t xmax)
+	const int32_t xmax,
+	const int32_t ymax)
 {
 	int32_t i;
 	uint64_t index = page_index;
@@ -495,7 +496,7 @@ static int show_memory(
 	if ((fd = open(g.path_mem, O_RDONLY)) < 0)
 		return ERR_NO_MEM_INFO;
 
-	for (i = 1; i < LINES - 1; i++) {
+	for (i = 1; i <= ymax; i++) {
 		int32_t j;
 		uint8_t bytes[xmax];
 		ssize_t nread = 0;
@@ -625,7 +626,7 @@ static inline void show_key(void)
 		wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE) | A_BOLD);
 	} else {
 		wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		mvwprintw(g.mainwin, LINES-1, 0, "%-*s", COLS, "Memory View");
+		mvwprintw(g.mainwin, LINES - 1, 0, "%-*s", COLS, "Memory View");
 	}
 }
 
@@ -668,12 +669,12 @@ static inline void show_help(void)
 }
 
 /*
- *  update_xmax()
- *	set the xmax scale for a specific view v
+ *  update_xymax()
+ *	set the xymax scale for a specific view v
  *	based on column width and scaling factor for
  *	page or mem (hex) views
  */
-static inline void update_xmax(position_t *position, int v)
+static inline void update_xymax(position_t *position, int v)
 {
 	static int32_t xmax_scale[] = {
 		1,	/* VIEW_PAGE */
@@ -681,6 +682,7 @@ static inline void update_xmax(position_t *position, int v)
 	};
 
 	position[v].xmax = (COLS - ADDR_OFFSET) / xmax_scale[v];
+	position[v].ymax = LINES - 2;
 }
 
 /*
@@ -701,15 +703,11 @@ static inline void reset_cursor(
 int main(int argc, char **argv)
 {
 	struct sigaction action;
-
 	map_t *map;
-
 	useconds_t udelay = 10000;
 	position_t position[2];
-
 	int64_t page_index = 0, prev_page_index;
 	int64_t data_index = 0, prev_data_index;
-
 	int32_t tick = 0, ticks = 60, blink = 0, zoom = 1;
 	pid_t pid = -1;
 	int rc = OK, ret;
@@ -828,8 +826,8 @@ int main(int argc, char **argv)
 	init_pair(BLACK_BLACK, COLOR_BLACK, COLOR_BLACK);
 	init_pair(BLUE_WHITE, COLOR_BLUE, COLOR_WHITE);
 
-	update_xmax(position, 0);
-	update_xmax(position, 1);
+	update_xymax(position, 0);
+	update_xymax(position, 1);
 
 	do {
 		int ch, blink_attrs;
@@ -846,7 +844,7 @@ int main(int argc, char **argv)
 		}
 
 		if ((g.view == VIEW_PAGE) && g.auto_zoom) {
-			int32_t window_pages = p->xmax * (LINES - 3);
+			int32_t window_pages = p->xmax * (p->ymax - 1);
 			zoom = g.mem_info.npages / window_pages;
 			zoom = MINIMUM(MAX_ZOOM, zoom);
 			zoom = MAXIMUM(MIN_ZOOM, zoom);
@@ -912,7 +910,7 @@ int main(int argc, char **argv)
 			continue;
 		}
 
-		update_xmax(position, g.view);
+		update_xymax(position, g.view);
 		wbkgd(g.mainwin, COLOR_PAIR(RED_BLUE));
 
 		show_key();
@@ -936,7 +934,7 @@ int main(int argc, char **argv)
 			map = g.mem_info.pages[cursor_index].map;
 			show_addr = g.mem_info.pages[cursor_index].addr +
 				data_index + (p->xpos + (p->ypos * p->xmax));
-			if (show_memory(cursor_index, data_index, p->xmax) < 0)
+			if (show_memory(cursor_index, data_index, p->xmax, p->ymax) < 0)
 				break;
 
 			blink_attrs = A_BOLD | ((blink & BLINK_MASK) ?
@@ -971,7 +969,7 @@ int main(int argc, char **argv)
 
 			map = g.mem_info.pages[cursor_index].map;
 			show_addr = g.mem_info.pages[cursor_index].addr;
-			show_pages(cursor_index, page_index, p->xmax, zoom);
+			show_pages(cursor_index, page_index, p->xmax, p->ymax, zoom);
 
 			blink_attrs = A_BOLD | ((blink & BLINK_MASK) ?
 				COLOR_PAIR(BLACK_WHITE) :
@@ -1123,13 +1121,13 @@ force_ch:
 			if (g.view == VIEW_PAGE)
 				data_index = 0;
 			blink = 0;
-			p->ypos += (LINES - 2) / 2;
+			p->ypos += p->ymax / 2;
 			break;
 		case KEY_PPAGE:
 			if (g.view == VIEW_PAGE)
 				data_index = 0;
 			blink = 0;
-			p->ypos -= (LINES - 2) / 2;
+			p->ypos -= p->ymax / 2;
 			break;
 		case KEY_HOME:
 			reset_cursor(p, &data_index, &page_index);
@@ -1138,12 +1136,11 @@ force_ch:
 			if (g.view == VIEW_PAGE) {
 				page_index = g.mem_info.npages - 1;
 				p->xpos = 0;
-				p->ypos = LINES - 3;
 			} else {
-				p->ypos = LINES - 3;
 				data_index = g.page_size -
-					((int64_t)p->xmax * (LINES - 2));
+					((int64_t)p->xmax * p->ymax);
 			}
+			p->ypos = p->ymax - 1;
 			p->xpos = p->xmax - 1;
 			break;
 		}
@@ -1151,7 +1148,7 @@ force_ch:
 		position[VIEW_PAGE].ypos_max =
 			(((g.mem_info.npages - page_index) / zoom) - p->xpos) /
 			position[0].xmax;
-		position[VIEW_MEM].ypos_max = LINES - 2;
+		position[VIEW_MEM].ypos_max = position[VIEW_MEM].ymax;
 
 		if (p->xpos >= p->xmax) {
 			p->xpos = 0;
@@ -1169,10 +1166,10 @@ force_ch:
 		 *  scroll data and page index offsets
 		 */
 		if (g.view == VIEW_MEM) {
-			if (p->ypos > LINES - 3) {
+			if (p->ypos > p->ymax - 1) {
 				data_index += p->xmax *
-					(p->ypos - (LINES - 3));
-				p->ypos = LINES - 3;
+					(p->ypos - (p->ymax - 1));
+				p->ypos = p->ymax - 1;
 				if (data_index >= g.page_size) {
 					data_index -= g.page_size;
 					page_index++;
@@ -1187,10 +1184,10 @@ force_ch:
 				}
 			}
 		} else {
-			if (p->ypos > LINES - 3) {
+			if (p->ypos > p->ymax - 1) {
 				page_index += zoom * p->xmax *
-					(p->ypos - (LINES - 3));
-				p->ypos = LINES - 3;
+					(p->ypos - (p->ymax - 1));
+				p->ypos = p->ymax - 1;
 			}
 			if (p->ypos < 0) {
 				page_index -= zoom * p->xmax * (-p->ypos);
@@ -1227,12 +1224,12 @@ force_ch:
 					zoom;
 				int64_t last = p->xmax - diff;
 
-				if (lines < LINES) {
+				if (lines <= p->ymax + 1) {
 					p->ypos = lines - 1;
 					page_index = 0;
 				} else {
-					p->ypos = LINES - 3;
-					page_index = (lines - (LINES - 2)) *
+					p->ypos = p->ymax - 1;
+					page_index = (lines - p->ymax) *
 						zoom_xmax;
 				}
 				if (p->xpos > last - 1)
