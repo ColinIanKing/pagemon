@@ -296,6 +296,7 @@ static void show_vm(void)
 	FILE *fp;
 	char buffer[4096];
 	int y = 3;
+	const int x = COLS - 26;
 
 	fp = fopen(g.path_status, "r");
 	if (fp == NULL)
@@ -308,14 +309,14 @@ static void show_vm(void)
 		uint64_t sz;
 
 		if (sscanf(buffer, "State: %5s %12s", state, longstate) == 2) {
-			mvwprintw(g.mainwin, y, 54, "State:    %-12.12s",
+			mvwprintw(g.mainwin, y, x, "State:    %-12.12s",
 				longstate);
 			y++;
 			continue;
 		}
 		if (sscanf(buffer, "Vm%8s %" SCNu64 "%7s",
 		    vmname, &sz, size) == 3) {
-			mvwprintw(g.mainwin, y, 54, "Vm%-6.6s %10" PRIu64 " %s",
+			mvwprintw(g.mainwin, y, x, "Vm%-6.6s %10" PRIu64 " %s",
 				vmname, sz, size);
 			y++;
 			continue;
