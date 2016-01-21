@@ -687,7 +687,7 @@ static inline void show_help(void)
  */
 static inline void update_xymax(position_t *position, int v)
 {
-	static int32_t xmax_scale[] = {
+	static const int32_t xmax_scale[] = {
 		1,	/* VIEW_PAGE */
 		4	/* VIEW_MEM */
 	};
