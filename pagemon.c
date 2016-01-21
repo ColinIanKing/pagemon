@@ -272,6 +272,7 @@ static void show_usage(void)
 		" -p pid    process ID to monitor\n"
 		" -r        read (page back in) pages at start\n"
 		" -t ticks  ticks between dirty page checks\n"
+		" -v        enable VM view\n"
 		" -z zoom   set page zoom scale\n");
 }
 
