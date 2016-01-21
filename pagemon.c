@@ -178,6 +178,7 @@ static int read_maps(void)
 	char buffer[4096];
 	page_t *page;
 	uint64_t last_addr = 0;
+	map_t *map;
 
 	memset(&g.mem_info, 0, sizeof(g.mem_info));
 	fp = fopen(g.path_maps, "r");
@@ -230,17 +231,16 @@ static int read_maps(void)
 		return ERR_ALLOC_NOMEM;
 
 	g.mem_info.last_addr = last_addr;
-	for (i = 0; i < g.mem_info.nmaps; i++) {
-		uint64_t count = (g.mem_info.maps[i].end -
-				  g.mem_info.maps[i].begin) / g.page_size;
-		uint64_t addr = g.mem_info.maps[i].begin;
+	map = g.mem_info.maps;
+	for (i = 0; i < g.mem_info.nmaps; i++, map++) {
+		uint64_t addr = map->begin;
+		uint64_t count = (map->end - map->begin) / g.page_size;
 
-		for (j = 0; j < count; j++) {
+		for (j = 0; j < count; j++, page++) {
 			page->addr = addr;
-			page->map = &g.mem_info.maps[i];
+			page->map = map;
 			page->index = i;
 			addr += g.page_size;
-			page++;
 		}
 	}
 	return (n == 0) ? ERR_NO_MAP_INFO : OK;
