@@ -838,6 +838,40 @@ int main(int argc, char **argv)
 		uint64_t show_addr;
 		float percent;
 
+		if ((!tick) && (g.view == VIEW_PAGE)) {
+			free(g.mem_info.pages);
+			g.mem_info.npages = 0;
+			if ((rc = read_maps()) < 0)
+				break;
+		}
+
+		if ((g.view == VIEW_PAGE) && g.auto_zoom) {
+			int32_t window_pages = p->xmax * (LINES - 3);
+			zoom = g.mem_info.npages / window_pages;
+			zoom = MINIMUM(MAX_ZOOM, zoom);
+			zoom = MAXIMUM(MIN_ZOOM, zoom);
+		}
+
+		if (g.opt_flags & OPT_FLAG_READ_ALL_PAGES) {
+			read_all_pages();
+			g.opt_flags &= ~OPT_FLAG_READ_ALL_PAGES;
+		}
+
+		if (!tick) {
+			int fd;
+			tick = 0;
+
+			fd = open(g.path_refs, O_RDWR);
+			if (fd > -1) {
+				ret = write(fd, "4", 1);
+				(void)ret;
+				(void)close(fd);
+			}
+		}
+		tick++;
+		if (tick > ticks)
+			tick = 0;
+
 		/*
 		 *  SIGWINCH window resize triggered so
 		 *  handle window resizing in ugly way
@@ -880,41 +914,6 @@ int main(int argc, char **argv)
 
 		update_xmax(position, g.view);
 		wbkgd(g.mainwin, COLOR_PAIR(RED_BLUE));
-
-
-		if ((!tick) && (g.view == VIEW_PAGE)) {
-			free(g.mem_info.pages);
-			g.mem_info.npages = 0;
-			if ((rc = read_maps()) < 0)
-				break;
-		}
-
-		if ((g.view == VIEW_PAGE) && g.auto_zoom) {
-			int32_t window_pages = p->xmax * (LINES - 3);
-			zoom = g.mem_info.npages / window_pages;
-			zoom = MINIMUM(MAX_ZOOM, zoom);
-			zoom = MAXIMUM(MIN_ZOOM, zoom);
-		}
-
-		if (g.opt_flags & OPT_FLAG_READ_ALL_PAGES) {
-			read_all_pages();
-			g.opt_flags &= ~OPT_FLAG_READ_ALL_PAGES;
-		}
-
-		if (!tick) {
-			int fd;
-			tick = 0;
-
-			fd = open(g.path_refs, O_RDWR);
-			if (fd > -1) {
-				ret = write(fd, "4", 1);
-				(void)ret;
-				(void)close(fd);
-			}
-		}
-		tick++;
-		if (tick > ticks)
-			tick = 0;
 
 		show_key();
 
