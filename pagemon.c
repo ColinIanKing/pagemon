@@ -400,6 +400,8 @@ static int show_pages(
 {
 	int32_t i;
 	uint64_t index = page_index;
+	const uint32_t shift = ((uint32_t)(8 * sizeof(uint64_t) - 4 -
+		__builtin_clzll((g.page_size))));
 	int fd;
 	map_t *map = g.mem_info.pages[cursor_index].map;
 
@@ -427,14 +429,20 @@ static int show_pages(
 				attr = COLOR_PAIR(BLACK_BLACK);
 				state = '~';
 			} else {
-				uint64_t addr = g.mem_info.pages[index].addr;
-				off_t offset = sizeof(uint64_t) *
-					       (addr / g.page_size);
+				uint64_t addr;
+				off_t offset;
+
+				addr = g.mem_info.pages[index].addr;
+
+				/* offset = sizeof(uint64_t) * (addr / g.page_size); */
+				offset = (addr >> shift) & ~7;
 
 				if (lseek(fd, offset, SEEK_SET) == (off_t)-1)
 					break;
 				if (read(fd, &info, sizeof(info)) < 0)
 					break;
+
+				 __builtin_prefetch(&g.mem_info.pages[index + zoom].addr, 1, 1);
 
 				attr = COLOR_PAIR(BLACK_WHITE);
 				if (info & PAGE_PRESENT) {
