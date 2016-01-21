@@ -1,3 +1,38 @@
+pagemon (0.01.05-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Make source 80 column friendly
+  * Move static globals into a global struct
+  * Remove a few blank lines
+  * Add -a to mini help info
+  * Remove some trailing white spaces
+  * Only do auto zoom when looking at pages
+  * Fix date list in copyright boilerplate, replace , with -
+  * Update dates in man page
+  * Widen int32_t to int64_t before computation to avoid overflow (again)
+  * Don't divide by mem_info.npages if this is zero (another instance)
+  * Widen int32_t to int64_t before computation to avoid overflow
+  * Don't divide by mem_info.npages if this is zero
+  * Add process state info in VM window
+  * Fix percent, don't scale by zoom factor after all
+  * Add End key function
+  * Make all indexes to pages int64_t just to be consistent
+  * Fix index to page map, show the correct page's page map info
+  * Don't print memory sizes in bytes, K is the smallest sensible amount
+  * Forgot to zoom cursor position to get per page details
+  * Add map size to tabbed page info
+  * Rename xwidth to xmax
+  * Minor formatting tweak
+  * Add and use MINIMUM, MAXIMUM macros
+  * Add -a automatic zoom mode command line option
+  * Add auto zoom mode
+  * Add t, T tick rate adjustment between dirty page updates
+  * define MIN_TICKS, MAX_TICKS, MIN_ZOOM, MAX_ZOOM
+  * Don't reset cursor when zoom keys pressed and in memory map mode
+  * Correctly print Map Name in page details toggle view
+
+ -- Colin King <colin.king@canonical.com>  Thu, 21 Jan 2016 00:26:21 +0000
+
 pagemon (0.01.04-1) unstable; urgency=medium
 
   * Makefile: bump version
