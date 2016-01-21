@@ -1069,6 +1069,22 @@ force_ch:
 				reset_cursor(p, &data_index, &page_index);
 			}
 			break;
+		case '[':
+			/* Reset zoom to MIN_ZOOM */
+			if (g.view == VIEW_PAGE) {
+				g.auto_zoom = false;
+				zoom = MIN_ZOOM;
+				reset_cursor(p, &data_index, &page_index);
+			}
+			break;
+		case ']':
+			/* Reset zoom to MAX_ZOOM */
+			if (g.view == VIEW_PAGE) {
+				g.auto_zoom = false;
+				zoom = MAX_ZOOM;
+				reset_cursor(p, &data_index, &page_index);
+			}
+			break;
 		case 't':
 			/* Tick increase */
 			ticks++;
