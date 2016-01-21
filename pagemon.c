@@ -899,7 +899,6 @@ int main(int argc, char **argv)
 			}
 		}
 
-		ch = getch();
 		show_key();
 
 		blink++;
@@ -910,6 +909,13 @@ int main(int argc, char **argv)
 				(pc->xpos + (pc->ypos * pc->xmax));
 			percent = (g.mem_info.npages > 0) ?
 				100.0 * cursor_index / g.mem_info.npages : 100;
+
+			/* Memory may have shrunk, so check this */
+			if (cursor_index >= (int64_t)g.mem_info.npages) {
+				/* Force end of memory key action */
+				ch = KEY_END;
+				goto force_ch;
+			}
 
 			map = g.mem_info.pages[cursor_index].map;
 			show_addr = g.mem_info.pages[cursor_index].addr +
@@ -940,6 +946,13 @@ int main(int argc, char **argv)
 			percent = (g.mem_info.npages > 0) ?
 				100.0 * cursor_index / g.mem_info.npages : 100;
 
+			/* Memory may have shrunk, so check this */
+			if (cursor_index >= (int64_t)g.mem_info.npages) {
+				/* Force end of memory key action */
+				ch = KEY_END;
+				goto force_ch;
+			}
+
 			map = g.mem_info.pages[cursor_index].map;
 			show_addr = g.mem_info.pages[cursor_index].addr;
 			show_pages(cursor_index, page_index, p->xmax, zoom);
@@ -952,6 +965,8 @@ int main(int argc, char **argv)
 				& A_CHARTEXT;
 			mvwprintw(g.mainwin, p->ypos + 1, curxpos, "%c", curch);
 		}
+		ch = getch();
+
 		if (g.help_view)
 			show_help();
 
@@ -978,6 +993,7 @@ int main(int argc, char **argv)
 		wrefresh(g.mainwin);
 		refresh();
 
+force_ch:
 		prev_page_index = page_index;
 		prev_data_index = data_index;
 		p->xpos_prev = p->xpos;
