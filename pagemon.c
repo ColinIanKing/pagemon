@@ -861,9 +861,9 @@ int main(int argc, char **argv)
 				break;
 		}
 		if ((g.view == VIEW_PAGE) && g.auto_zoom) {
-			const int32_t window_pages = p->xmax * (p->ymax - 1);
+			const int32_t window_pages = p->xmax * p->ymax;
 
-			zoom = g.mem_info.npages / window_pages;
+			zoom = (g.mem_info.npages + window_pages - 1) / window_pages;
 			zoom = MINIMUM(MAX_ZOOM, zoom);
 			zoom = MAXIMUM(MIN_ZOOM, zoom);
 		}
