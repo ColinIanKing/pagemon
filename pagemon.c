@@ -189,7 +189,8 @@ static int read_maps(void)
 		int64_t length;
 
 		g.mem_info.maps[n].name[0] = '\0';
-		ret = sscanf(buffer, "%" SCNx64 "-%" SCNx64 " %5s %*s %6s %*d %s",
+		ret = sscanf(buffer, "%" SCNx64 "-%" SCNx64
+			" %5s %*s %6s %*d %s",
 			&g.mem_info.maps[n].begin,
 			&g.mem_info.maps[n].end,
 			g.mem_info.maps[n].attr,
@@ -265,7 +266,8 @@ static void show_usage(void)
 	printf(APP_NAME ", version " VERSION "\n\n"
 		"Usage: " APP_NAME " [options]\n"
 		" -a        enable automatic zoom mode\n"
-		" -d        delay in microseconds between refreshes, default 10000\n"
+		" -d        delay in microseconds between refreshes, "
+			"default 10000\n"
 		" -h        help\n"
 		" -p pid    process ID to monitor\n"
 		" -r        read (page back in) pages at start\n"
@@ -512,26 +514,32 @@ static int show_memory(
 			    (addr > g.mem_info.last_addr)) {
 				/* End of memory */
 				wattrset(g.mainwin, COLOR_PAIR(BLACK_BLACK));
-				mvwprintw(g.mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "   ");
-				mvwprintw(g.mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xmax) + j, " ");
+				mvwprintw(g.mainwin, i, ADDR_OFFSET +
+					(HEX_WIDTH * j), "   ");
+				mvwprintw(g.mainwin, i, ADDR_OFFSET +
+					(HEX_WIDTH * xmax) + j, " ");
 				goto do_border;
 			}
 			if (j > nread) {
 				/* Failed to read data */
 				wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE));
-				mvwprintw(g.mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "?? ");
+				mvwprintw(g.mainwin, i, ADDR_OFFSET +
+					(HEX_WIDTH * j), "?? ");
 				wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
-				mvwprintw(g.mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xmax) + j, "?");
+				mvwprintw(g.mainwin, i, ADDR_OFFSET +
+					(HEX_WIDTH * xmax) + j, "?");
 				goto do_border;
 			}
 
 			/* We have some legimate data to display */
  			byte = bytes[j];
 			wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE));
-			mvwprintw(g.mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "%2.2" PRIx8 " ", byte);
+			mvwprintw(g.mainwin, i, ADDR_OFFSET +
+				(HEX_WIDTH * j), "%2.2" PRIx8 " ", byte);
 			wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
 			byte &= 0x7f;
-			mvwprintw(g.mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xmax) + j, "%c",
+			mvwprintw(g.mainwin, i, ADDR_OFFSET +
+				(HEX_WIDTH * xmax) + j, "%c",
 				(byte < 32 || byte > 126) ? '.' : byte);
 do_border:
 			wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
@@ -913,14 +921,17 @@ int main(int argc, char **argv)
 				COLOR_PAIR(WHITE_BLUE) :
 				COLOR_PAIR(BLUE_WHITE));
 			wattrset(g.mainwin, blink_attrs);
-			curch = mvwinch(g.mainwin, p->ypos + 1, curxpos) & A_CHARTEXT;
+			curch = mvwinch(g.mainwin, p->ypos + 1, curxpos)
+				& A_CHARTEXT;
 			mvwprintw(g.mainwin, p->ypos + 1, curxpos, "%c", curch);
 
 			blink_attrs = A_BOLD | ((blink & BLINK_MASK) ?
-				COLOR_PAIR(BLACK_WHITE) : COLOR_PAIR(WHITE_BLACK));
+				COLOR_PAIR(BLACK_WHITE) :
+				COLOR_PAIR(WHITE_BLACK));
 			curxpos = ADDR_OFFSET + (p->xmax * 3) + p->xpos;
 			wattrset(g.mainwin, blink_attrs);
-			curch = mvwinch(g.mainwin, p->ypos + 1, curxpos) & A_CHARTEXT;
+			curch = mvwinch(g.mainwin, p->ypos + 1, curxpos)
+				& A_CHARTEXT;
 			mvwprintw(g.mainwin, p->ypos + 1, curxpos, "%c", curch);
 		} else {
 			int32_t curxpos = p->xpos + ADDR_OFFSET;
@@ -934,9 +945,11 @@ int main(int argc, char **argv)
 			show_pages(cursor_index, page_index, p->xmax, zoom);
 
 			blink_attrs = A_BOLD | ((blink & BLINK_MASK) ?
-				COLOR_PAIR(BLACK_WHITE) : COLOR_PAIR(WHITE_BLACK));
+				COLOR_PAIR(BLACK_WHITE) :
+				COLOR_PAIR(WHITE_BLACK));
 			wattrset(g.mainwin, blink_attrs);
-			curch = mvwinch(g.mainwin, p->ypos + 1, curxpos) & A_CHARTEXT;
+			curch = mvwinch(g.mainwin, p->ypos + 1, curxpos)
+				& A_CHARTEXT;
 			mvwprintw(g.mainwin, p->ypos + 1, curxpos, "%c", curch);
 		}
 		if (g.help_view)
@@ -946,12 +959,15 @@ int main(int argc, char **argv)
 		if (!map) {
 			mvwprintw(g.mainwin, 0, 0,
 				"Pagemon 0x---------------- %4.4s x %-3d ",
-				g.auto_zoom && ((blink & BLINK_MASK))  ? "Auto" : "Zoom", zoom);
-			wprintw(g.mainwin, "---- --:-- %-20.20s", "[Not Mapped]");
+				g.auto_zoom && ((blink & BLINK_MASK)) ?
+				"Auto" : "Zoom", zoom);
+			wprintw(g.mainwin, "---- --:-- %-20.20s",
+				"[Not Mapped]");
 		} else {
 			mvwprintw(g.mainwin, 0, 0, "Pagemon 0x%16.16" PRIx64
 				" %4.4s x %-3d ", show_addr,
-				g.auto_zoom && ((blink & BLINK_MASK)) ? "Auto" : "Zoom", zoom);
+				g.auto_zoom && ((blink & BLINK_MASK)) ?
+					"Auto" : "Zoom", zoom);
 			wprintw(g.mainwin, "%s %s %-20.20s",
 				map->attr, map->dev,
 				map->name[0] == '\0' ?
@@ -1155,10 +1171,12 @@ int main(int argc, char **argv)
 			    (p->ypos * p->xmax))) >= g.mem_info.npages) {
 				int64_t zoom_xmax = (int64_t)zoom * p->xmax;
 				int64_t lines =
-					((zoom_xmax - 1) + g.mem_info.npages) / zoom_xmax;
+					((zoom_xmax - 1) + g.mem_info.npages) /
+					zoom_xmax;
 				uint64_t npages =
 					(zoom_xmax * lines);
-				int64_t diff = (npages - g.mem_info.npages) / zoom;
+				int64_t diff = (npages - g.mem_info.npages) /
+					zoom;
 				int64_t last = p->xmax - diff;
 
 				if (lines < LINES) {
@@ -1166,7 +1184,8 @@ int main(int argc, char **argv)
 					page_index = 0;
 				} else {
 					p->ypos = LINES - 3;
-					page_index = (lines - (LINES - 2)) * zoom_xmax;
+					page_index = (lines - (LINES - 2)) *
+						zoom_xmax;
 				}
 				if (p->xpos > last - 1)
 					p->xpos = last - 1;
