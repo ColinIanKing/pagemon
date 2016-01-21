@@ -487,11 +487,10 @@ static int show_memory(
 	int64_t data_index,
 	const position_t *p)
 {
+	uint64_t addr, index = page_index;
 	int32_t i;
-	uint64_t index = page_index;
-	int fd;
-	uint64_t addr;
 	const int32_t xmax = p->xmax, ymax = p->ymax;
+	int fd;
 
 	if ((fd = open(g.path_mem, O_RDONLY)) < 0)
 		return ERR_NO_MEM_INFO;
@@ -713,8 +712,6 @@ int main(int argc, char **argv)
 	int rc = OK, ret;
 	bool do_run = true;
 
-	memset(position, 0, sizeof(position));
-
 	for (;;) {
 		int c = getopt(argc, argv, "ad:hp:rt:vz:");
 
@@ -826,12 +823,13 @@ int main(int argc, char **argv)
 	init_pair(BLACK_BLACK, COLOR_BLACK, COLOR_BLACK);
 	init_pair(BLUE_WHITE, COLOR_BLUE, COLOR_WHITE);
 
+	memset(position, 0, sizeof(position));
 	update_xymax(position, 0);
 	update_xymax(position, 1);
 
 	do {
 		int ch, blink_attrs;
-		char curch;
+		char cursor_ch;
 		position_t *p = &position[g.view];
 		uint64_t show_addr;
 		float percent;
@@ -842,19 +840,16 @@ int main(int argc, char **argv)
 			if ((rc = read_maps()) < 0)
 				break;
 		}
-
 		if ((g.view == VIEW_PAGE) && g.auto_zoom) {
 			int32_t window_pages = p->xmax * (p->ymax - 1);
 			zoom = g.mem_info.npages / window_pages;
 			zoom = MINIMUM(MAX_ZOOM, zoom);
 			zoom = MAXIMUM(MIN_ZOOM, zoom);
 		}
-
 		if (g.opt_flags & OPT_FLAG_READ_ALL_PAGES) {
 			read_all_pages();
 			g.opt_flags &= ~OPT_FLAG_READ_ALL_PAGES;
 		}
-
 		if (!tick) {
 			int fd;
 			tick = 0;
@@ -912,7 +907,6 @@ int main(int argc, char **argv)
 
 		update_xymax(position, g.view);
 		wbkgd(g.mainwin, COLOR_PAIR(RED_BLUE));
-
 		show_key();
 
 		blink++;
@@ -941,18 +935,18 @@ int main(int argc, char **argv)
 				COLOR_PAIR(WHITE_BLUE) :
 				COLOR_PAIR(BLUE_WHITE));
 			wattrset(g.mainwin, blink_attrs);
-			curch = mvwinch(g.mainwin, p->ypos + 1, curxpos)
+			cursor_ch = mvwinch(g.mainwin, p->ypos + 1, curxpos)
 				& A_CHARTEXT;
-			mvwprintw(g.mainwin, p->ypos + 1, curxpos, "%c", curch);
+			mvwprintw(g.mainwin, p->ypos + 1, curxpos, "%c", cursor_ch);
 
 			blink_attrs = A_BOLD | ((blink & BLINK_MASK) ?
 				COLOR_PAIR(BLACK_WHITE) :
 				COLOR_PAIR(WHITE_BLACK));
 			curxpos = ADDR_OFFSET + (p->xmax * 3) + p->xpos;
 			wattrset(g.mainwin, blink_attrs);
-			curch = mvwinch(g.mainwin, p->ypos + 1, curxpos)
+			cursor_ch = mvwinch(g.mainwin, p->ypos + 1, curxpos)
 				& A_CHARTEXT;
-			mvwprintw(g.mainwin, p->ypos + 1, curxpos, "%c", curch);
+			mvwprintw(g.mainwin, p->ypos + 1, curxpos, "%c", cursor_ch);
 		} else {
 			int32_t curxpos = p->xpos + ADDR_OFFSET;
 			int64_t cursor_index = page_index +
@@ -975,9 +969,9 @@ int main(int argc, char **argv)
 				COLOR_PAIR(BLACK_WHITE) :
 				COLOR_PAIR(WHITE_BLACK));
 			wattrset(g.mainwin, blink_attrs);
-			curch = mvwinch(g.mainwin, p->ypos + 1, curxpos)
+			cursor_ch = mvwinch(g.mainwin, p->ypos + 1, curxpos)
 				& A_CHARTEXT;
-			mvwprintw(g.mainwin, p->ypos + 1, curxpos, "%c", curch);
+			mvwprintw(g.mainwin, p->ypos + 1, curxpos, "%c", cursor_ch);
 		}
 		ch = getch();
 
@@ -1006,7 +1000,6 @@ int main(int argc, char **argv)
 
 		wrefresh(g.mainwin);
 		refresh();
-
 force_ch:
 		prev_page_index = page_index;
 		prev_data_index = data_index;
@@ -1201,9 +1194,9 @@ force_ch:
 		}
 		if (g.view == VIEW_MEM) {
 			position_t *pc = &position[VIEW_PAGE];
-			int64_t cursor_index = page_index +
+			const int64_t cursor_index = page_index +
 				(pc->xpos + (pc->ypos * pc->xmax));
-			uint64_t addr = g.mem_info.pages[cursor_index].addr +
+			const uint64_t addr = g.mem_info.pages[cursor_index].addr +
 				data_index + (p->xpos + (p->ypos * p->xmax));
 			if (addr >= g.mem_info.last_addr) {
 				page_index = prev_page_index;
@@ -1214,15 +1207,15 @@ force_ch:
 		} else {
 			if ((uint64_t)page_index + ((int64_t)zoom * (p->xpos +
 			    (p->ypos * p->xmax))) >= g.mem_info.npages) {
-				int64_t zoom_xmax = (int64_t)zoom * p->xmax;
-				int64_t lines =
+				const int64_t zoom_xmax = (int64_t)zoom * p->xmax;
+				const int64_t lines =
 					((zoom_xmax - 1) + g.mem_info.npages) /
 					zoom_xmax;
-				uint64_t npages =
+				const uint64_t npages =
 					(zoom_xmax * lines);
-				int64_t diff = (npages - g.mem_info.npages) /
+				const int64_t diff = (npages - g.mem_info.npages) /
 					zoom;
-				int64_t last = p->xmax - diff;
+				const int64_t last = p->xmax - diff;
 
 				if (lines <= p->ymax + 1) {
 					p->ypos = lines - 1;
