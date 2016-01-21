@@ -701,7 +701,7 @@ int main(int argc, char **argv)
 	int64_t page_index = 0, prev_page_index;
 	int64_t data_index = 0, prev_data_index;
 
-	int32_t tick, ticks = 60, blink = 0, zoom = 1;
+	int32_t tick = 0, ticks = 60, blink = 0, zoom = 1;
 	pid_t pid = -1;
 	int rc = OK, ret;
 	bool do_run = true;
@@ -709,7 +709,7 @@ int main(int argc, char **argv)
 	memset(position, 0, sizeof(position));
 
 	for (;;) {
-		int c = getopt(argc, argv, "ad:hp:rt:z:");
+		int c = getopt(argc, argv, "ad:hp:rt:vz:");
 
 		if (c == -1)
 			break;
@@ -745,6 +745,9 @@ int main(int argc, char **argv)
 				fprintf(stderr, "Invalid ticks value\n");
 				exit(EXIT_FAILURE);
 			}
+			break;
+		case 'v':
+			g.vm_view = true;
 			break;
 		case 'z':
 			zoom = strtoul(optarg, NULL, 10);
@@ -795,7 +798,6 @@ int main(int argc, char **argv)
 	snprintf(g.path_status, sizeof(g.path_status),
 		"/proc/%i/status", pid);
 
-	tick = ticks;	/* force immediate page load */
 	g.resized = false;
 	initscr();
 	start_color();
@@ -870,9 +872,13 @@ int main(int argc, char **argv)
 		update_xmax(position, g.view);
 		wbkgd(g.mainwin, COLOR_PAIR(RED_BLUE));
 
-		if ((g.view == VIEW_PAGE) &&
-		    ((rc = read_maps()) < 0))
-			break;
+
+		if ((!tick) && (g.view == VIEW_PAGE)) {
+			free(g.mem_info.pages);
+			g.mem_info.npages = 0;
+			if ((rc = read_maps()) < 0)
+				break;
+		}
 
 		if ((g.view == VIEW_PAGE) && g.auto_zoom) {
 			int32_t window_pages = p->xmax * (LINES - 3);
@@ -886,8 +892,7 @@ int main(int argc, char **argv)
 			g.opt_flags &= ~OPT_FLAG_READ_ALL_PAGES;
 		}
 
-		tick++;
-		if (tick > ticks) {
+		if (!tick) {
 			int fd;
 			tick = 0;
 
@@ -898,6 +903,9 @@ int main(int argc, char **argv)
 				(void)close(fd);
 			}
 		}
+		tick++;
+		if (tick > ticks)
+			tick = 0;
 
 		show_key();
 
@@ -1206,10 +1214,6 @@ force_ch:
 				if (p->xpos > last - 1)
 					p->xpos = last - 1;
 			}
-		}
-		if (g.view == VIEW_PAGE) {
-			free(g.mem_info.pages);
-			g.mem_info.npages = 0;
 		}
 		usleep(udelay);
 	} while (do_run);
