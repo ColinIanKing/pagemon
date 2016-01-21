@@ -119,22 +119,26 @@ typedef struct {
 } position_t;
 
 /* I dislike globals, but it saves passing these around a lot */
-static mem_info_t mem_info;		/* Mapping and page info */
-static uint64_t max_pages;		/* Max pages in system */
-static uint32_t page_size;		/* Page size in bytes */
-static bool tab_view = false;		/* Page pop-up info */
-static bool vm_view = false;		/* Process VM stats */
-static bool help_view = false;		/* Help pop-up info */
-static bool resized = false;		/* SIGWINCH occurred */
-static bool auto_zoom = false;		/* Automatic zoom */
-static uint8_t view = VIEW_PAGE;	/* Default page or memory view */
-static uint8_t opt_flags;		/* User option flags */
-WINDOW *mainwin = NULL;			/* curses main window */
-static char path_refs[PATH_MAX];
-static char path_pagemap[PATH_MAX];
-static char path_maps[PATH_MAX];
-static char path_mem[PATH_MAX];
-static char path_status[PATH_MAX];
+typedef struct {
+	mem_info_t mem_info;		/* Mapping and page info */
+	uint64_t max_pages;		/* Max pages in system */
+	uint32_t page_size;		/* Page size in bytes */
+	bool tab_view;			/* Page pop-up info */
+	bool vm_view;			/* Process VM stats */
+	bool help_view;			/* Help pop-up info */
+	bool resized;			/* SIGWINCH occurred */
+	bool auto_zoom;			/* Automatic zoom */
+	uint8_t view;			/* Default page or memory view */
+	uint8_t opt_flags;		/* User option flags */
+	WINDOW *mainwin;		/* curses main window */
+	char path_refs[PATH_MAX];	/* /proc/$PID/clear_refs */
+	char path_pagemap[PATH_MAX];	/* /proc/$PID/pagemap */
+	char path_maps[PATH_MAX];	/* /proc/$PID/maps */
+	char path_mem[PATH_MAX];	/* /proc/$PID/mem */
+	char path_status[PATH_MAX];	/* /proc/$PID/statys */
+} global_t;
+
+static global_t g;
 
 /*
  *  mem_to_str()
@@ -175,8 +179,8 @@ static int read_maps(void)
 	page_t *page;
 	uint64_t last_addr = 0;
 
-	memset(&mem_info, 0, sizeof(mem_info));
-	fp = fopen(path_maps, "r");
+	memset(&g.mem_info, 0, sizeof(g.mem_info));
+	fp = fopen(g.path_maps, "r");
 	if (fp == NULL)
 		return ERR_NO_MAP_INFO;
 
@@ -184,31 +188,31 @@ static int read_maps(void)
 		int ret;
 		int64_t length;
 
-		mem_info.maps[n].name[0] = '\0';
+		g.mem_info.maps[n].name[0] = '\0';
 		ret = sscanf(buffer, "%" SCNx64 "-%" SCNx64 " %5s %*s %6s %*d %s",
-			&mem_info.maps[n].begin,
-			&mem_info.maps[n].end,
-			mem_info.maps[n].attr,
-			mem_info.maps[n].dev,
-			mem_info.maps[n].name);
+			&g.mem_info.maps[n].begin,
+			&g.mem_info.maps[n].end,
+			g.mem_info.maps[n].attr,
+			g.mem_info.maps[n].dev,
+			g.mem_info.maps[n].name);
 		if ((ret != 5) && (ret != 4))
 			continue;
 		if (ret == 4)
-			mem_info.maps[n].name[0]= '\0';
+			g.mem_info.maps[n].name[0]= '\0';
 
 		/* Simple sanity check */
-		if (mem_info.maps[n].end < mem_info.maps[n].begin)
+		if (g.mem_info.maps[n].end < g.mem_info.maps[n].begin)
 			continue;
 
-		length = mem_info.maps[n].end - mem_info.maps[n].begin;
+		length = g.mem_info.maps[n].end - g.mem_info.maps[n].begin;
 		/* Check for overflow */
-		if (mem_info.npages + length < mem_info.npages)
+		if (g.mem_info.npages + length < g.mem_info.npages)
 			continue;
 
-		if (last_addr < mem_info.maps[n].end)
-			last_addr = mem_info.maps[n].end;
+		if (last_addr < g.mem_info.maps[n].end)
+			last_addr = g.mem_info.maps[n].end;
 
-		mem_info.npages += length / page_size;
+		g.mem_info.npages += length / g.page_size;
 		n++;
 		if (n >= MAX_MMAPS)
 			break;
@@ -216,25 +220,25 @@ static int read_maps(void)
 	fclose(fp);
 
 	/* Unlikely, but need to keep Coverity Scan happy */
-	if (mem_info.npages > max_pages)
+	if (g.mem_info.npages > g.max_pages)
 		return ERR_TOO_MANY_PAGES;
 
-	mem_info.nmaps = n;
-	mem_info.pages = page = calloc(mem_info.npages, sizeof(page_t));
-	if (!mem_info.pages)
+	g.mem_info.nmaps = n;
+	g.mem_info.pages = page = calloc(g.mem_info.npages, sizeof(page_t));
+	if (!g.mem_info.pages)
 		return ERR_ALLOC_NOMEM;
 
-	mem_info.last_addr = last_addr;
-	for (i = 0; i < mem_info.nmaps; i++) {
-		uint64_t count = (mem_info.maps[i].end -
-				  mem_info.maps[i].begin) / page_size;
-		uint64_t addr = mem_info.maps[i].begin;
+	g.mem_info.last_addr = last_addr;
+	for (i = 0; i < g.mem_info.nmaps; i++) {
+		uint64_t count = (g.mem_info.maps[i].end -
+				  g.mem_info.maps[i].begin) / g.page_size;
+		uint64_t addr = g.mem_info.maps[i].begin;
 
 		for (j = 0; j < count; j++) {
 			page->addr = addr;
-			page->map = &mem_info.maps[i];
+			page->map = &g.mem_info.maps[i];
 			page->index = i;
-			addr += page_size;
+			addr += g.page_size;
 			page++;
 		}
 	}
@@ -249,7 +253,7 @@ static void handle_winch(int sig)
 {
 	(void)sig;
 
-	resized = true;
+	g.resized = true;
 }
 
 /*
@@ -279,25 +283,25 @@ static void show_vm(void)
 	char buffer[4096];
 	int y = 3;
 
-	fp = fopen(path_status, "r");
+	fp = fopen(g.path_status, "r");
 	if (fp == NULL)
 		return;
 
-	wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+	wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
 		char vmname[9], size[8];
 		char state[6], longstate[13];
 		uint64_t sz;
 
 		if (sscanf(buffer, "State: %5s %12s", state, longstate) == 2) {
-			mvwprintw(mainwin, y, 54, "State:    %-12.12s",
+			mvwprintw(g.mainwin, y, 54, "State:    %-12.12s",
 				longstate);
 			y++;
 			continue;
 		}
 		if (sscanf(buffer, "Vm%8s %" SCNu64 "%7s",
 		    vmname, &sz, size) == 3) {
-			mvwprintw(mainwin, y, 54, "Vm%-6.6s %10" PRIu64 " %s",
+			mvwprintw(g.mainwin, y, 54, "Vm%-6.6s %10" PRIu64 " %s",
 				vmname, sz, size);
 			y++;
 			continue;
@@ -320,62 +324,62 @@ static void show_page_bits(
 	char buf[16];
 
 	mem_to_str(map->end - map->begin, buf, sizeof(buf) - 1);
-	wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-	mvwprintw(mainwin, 3, 4,
+	wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+	mvwprintw(g.mainwin, 3, 4,
 		" Page:      0x%16.16" PRIx64 "%18s",
-		mem_info.pages[index].addr, "");
-	mvwprintw(mainwin, 4, 4,
+		g.mem_info.pages[index].addr, "");
+	mvwprintw(g.mainwin, 4, 4,
 		" Page Size: 0x%8.8" PRIx32 " bytes%20s",
-		page_size, "");
-	mvwprintw(mainwin, 5, 4,
+		g.page_size, "");
+	mvwprintw(g.mainwin, 5, 4,
 		" Map:       0x%16.16" PRIx64 "-%16.16" PRIx64 " ",
 		map->begin, map->end - 1);
-	mvwprintw(mainwin, 6, 4,
+	mvwprintw(g.mainwin, 6, 4,
 		" Map Size:  %s%27s", buf, "");
-	mvwprintw(mainwin, 7, 4,
+	mvwprintw(g.mainwin, 7, 4,
 		" Device:    %5.5s%31s",
 		map->dev, "");
-	mvwprintw(mainwin, 8, 4,
+	mvwprintw(g.mainwin, 8, 4,
 		" Prot:      %4.4s%32s",
 		map->attr, "");
-	mvwprintw(mainwin, 9, 4,
+	mvwprintw(g.mainwin, 9, 4,
 		" Map Name:  %-35.35s ", map->name[0] == '\0' ?
 			"[Anonymous]" : basename(map->name));
 
-	offset = sizeof(uint64_t) * (mem_info.pages[index].addr / page_size);
+	offset = sizeof(uint64_t) * (g.mem_info.pages[index].addr / g.page_size);
 	if (lseek(fd, offset, SEEK_SET) == (off_t)-1)
 		return;
 	if (read(fd, &info, sizeof(info)) != sizeof(info))
 		return;
 
-	mvwprintw(mainwin, 10, 4,
+	mvwprintw(g.mainwin, 10, 4,
 		" Flag:      0x%16.16" PRIx64 "%18s", info, "");
 	if (info & PAGE_SWAPPED) {
-		mvwprintw(mainwin, 11, 4,
+		mvwprintw(g.mainwin, 11, 4,
 			"   Swap Type:           0x%2.2" PRIx64 "%20s",
 			info & 0x1f, "");
-		mvwprintw(mainwin, 12, 4,
+		mvwprintw(g.mainwin, 12, 4,
 			"   Swap Offset:         0x%16.16" PRIx64 "%6s",
 			(info & 0x00ffffffffffffffULL) >> 5, "");
 	} else {
-		mvwprintw(mainwin, 11, 4, "%48s", "");
-		mvwprintw(mainwin, 12, 4,
+		mvwprintw(g.mainwin, 11, 4, "%48s", "");
+		mvwprintw(g.mainwin, 12, 4,
 			"   Page Frame Number:   0x%16.16" PRIx64 "%6s",
 			info & 0x00ffffffffffffffULL, "");
 	}
-	mvwprintw(mainwin, 13, 4,
+	mvwprintw(g.mainwin, 13, 4,
 		"   Soft-dirty PTE:      %3s%21s",
 		(info & PAGE_PTE_SOFT_DIRTY) ? "Yes" : "No ", "");
-	mvwprintw(mainwin, 14, 4,
+	mvwprintw(g.mainwin, 14, 4,
 		"   Exclusively Mapped:  %3s%21s",
 		(info & PAGE_EXCLUSIVE_MAPPED) ? "Yes" : "No ", "");
-	mvwprintw(mainwin, 15, 4,
+	mvwprintw(g.mainwin, 15, 4,
 		"   File or Shared Anon: %3s%21s",
 		(info & PAGE_FILE_SHARED_ANON) ? "Yes" : "No ", "");
-	mvwprintw(mainwin, 16, 4,
+	mvwprintw(g.mainwin, 16, 4,
 		"   Present in Swap:     %3s%21s",
 		(info & PAGE_SWAPPED) ? "Yes" : "No ", "");
-	mvwprintw(mainwin, 17, 4,
+	mvwprintw(g.mainwin, 17, 4,
 		"   Present in RAM:      %3s%21s",
 		(info & PAGE_PRESENT) ? "Yes" : "No ", "");
 }
@@ -394,35 +398,35 @@ static int show_pages(
 	int32_t i;
 	uint64_t index = page_index;
 	int fd;
-	map_t *map = mem_info.pages[cursor_index].map;
+	map_t *map = g.mem_info.pages[cursor_index].map;
 
-	if ((fd = open(path_pagemap, O_RDONLY)) < 0)
+	if ((fd = open(g.path_pagemap, O_RDONLY)) < 0)
 		return ERR_NO_MAP_INFO;
 
 	for (i = 1; i < LINES - 1; i++) {
 		uint64_t info;
 		int32_t j;
 
-		if (index >= mem_info.npages) {
-			wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
-			mvwprintw(mainwin, i, 0, "---------------- ");
+		if (index >= g.mem_info.npages) {
+			wattrset(g.mainwin, COLOR_PAIR(BLACK_BLACK));
+			mvwprintw(g.mainwin, i, 0, "---------------- ");
 		} else {
-			uint64_t addr = mem_info.pages[index].addr;
-			wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-			mvwprintw(mainwin, i, 0, "%16.16" PRIx64 " ", addr);
+			uint64_t addr = g.mem_info.pages[index].addr;
+			wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
+			mvwprintw(g.mainwin, i, 0, "%16.16" PRIx64 " ", addr);
 		}
 
 		for (j = 0; j < xmax; j++) {
 			char state = '.';
 			int attr = COLOR_PAIR(BLACK_WHITE);
 
-			if (index >= mem_info.npages) {
+			if (index >= g.mem_info.npages) {
 				attr = COLOR_PAIR(BLACK_BLACK);
 				state = '~';
 			} else {
-				uint64_t addr = mem_info.pages[index].addr;
+				uint64_t addr = g.mem_info.pages[index].addr;
 				off_t offset = sizeof(uint64_t) *
-					       (addr / page_size);
+					       (addr / g.page_size);
 
 				if (lseek(fd, offset, SEEK_SET) == (off_t)-1)
 					break;
@@ -448,15 +452,15 @@ static int show_pages(
 				}
 				index += zoom;
 			}
-			wattrset(mainwin, attr);
-			mvwprintw(mainwin, i, ADDR_OFFSET + j, "%c", state);
+			wattrset(g.mainwin, attr);
+			mvwprintw(g.mainwin, i, ADDR_OFFSET + j, "%c", state);
 		}
 	}
-	wattrset(mainwin, A_NORMAL);
+	wattrset(g.mainwin, A_NORMAL);
 
-	if (map && tab_view)
+	if (map && g.tab_view)
 		show_page_bits(fd, map, cursor_index);
-	if (vm_view)
+	if (g.vm_view)
 		show_vm();
 
 	(void)close(fd);
@@ -470,7 +474,6 @@ static int show_pages(
 static int show_memory(
 	const int64_t page_index,
 	int64_t data_index,
-	const uint32_t page_size,
 	const int32_t xmax)
 {
 	int32_t i;
@@ -478,7 +481,7 @@ static int show_memory(
 	int fd;
 	uint64_t addr;
 
-	if ((fd = open(path_mem, O_RDONLY)) < 0)
+	if ((fd = open(g.path_mem, O_RDONLY)) < 0)
 		return ERR_NO_MEM_INFO;
 
 	for (i = 1; i < LINES - 1; i++) {
@@ -486,7 +489,7 @@ static int show_memory(
 		uint8_t bytes[xmax];
 		ssize_t nread = 0;
 
-		addr = mem_info.pages[index].addr + data_index;
+		addr = g.mem_info.pages[index].addr + data_index;
 		if (lseek(fd, (off_t)addr, SEEK_SET) == (off_t)-1) {
 			nread = -1;
 		} else {
@@ -495,47 +498,47 @@ static int show_memory(
 				nread = -1;
 		}
 
-		wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-		if (index >= mem_info.npages)
-			mvwprintw(mainwin, i, 0, "---------------- ");
+		wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
+		if (index >= g.mem_info.npages)
+			mvwprintw(g.mainwin, i, 0, "---------------- ");
 		else
-			mvwprintw(mainwin, i, 0, "%16.16" PRIx64 " ", addr);
-		mvwprintw(mainwin, i, COLS - 3, "   ", addr);
+			mvwprintw(g.mainwin, i, 0, "%16.16" PRIx64 " ", addr);
+		mvwprintw(g.mainwin, i, COLS - 3, "   ", addr);
 
 		for (j = 0; j < xmax; j++) {
 			uint8_t byte;
-			addr = mem_info.pages[index].addr + data_index;
-			if ((index >= mem_info.npages) ||
-			    (addr > mem_info.last_addr)) {
+			addr = g.mem_info.pages[index].addr + data_index;
+			if ((index >= g.mem_info.npages) ||
+			    (addr > g.mem_info.last_addr)) {
 				/* End of memory */
-				wattrset(mainwin, COLOR_PAIR(BLACK_BLACK));
-				mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "   ");
-				mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xmax) + j, " ");
+				wattrset(g.mainwin, COLOR_PAIR(BLACK_BLACK));
+				mvwprintw(g.mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "   ");
+				mvwprintw(g.mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xmax) + j, " ");
 				goto do_border;
 			}
 			if (j > nread) {
 				/* Failed to read data */
-				wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
-				mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "?? ");
-				wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-				mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xmax) + j, "?");
+				wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE));
+				mvwprintw(g.mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "?? ");
+				wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
+				mvwprintw(g.mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xmax) + j, "?");
 				goto do_border;
 			}
 
 			/* We have some legimate data to display */
  			byte = bytes[j];
-			wattrset(mainwin, COLOR_PAIR(WHITE_BLUE));
-			mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "%2.2" PRIx8 " ", byte);
-			wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
+			wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE));
+			mvwprintw(g.mainwin, i, ADDR_OFFSET + (HEX_WIDTH * j), "%2.2" PRIx8 " ", byte);
+			wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
 			byte &= 0x7f;
-			mvwprintw(mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xmax) + j, "%c",
+			mvwprintw(g.mainwin, i, ADDR_OFFSET + (HEX_WIDTH * xmax) + j, "%c",
 				(byte < 32 || byte > 126) ? '.' : byte);
 do_border:
-			wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-			mvwprintw(mainwin, i, 16 + (HEX_WIDTH * xmax), " ");
+			wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
+			mvwprintw(g.mainwin, i, 16 + (HEX_WIDTH * xmax), " ");
 			data_index++;
-			if (data_index >= page_size) {
-				data_index -= page_size;
+			if (data_index >= g.page_size) {
+				data_index -= g.page_size;
 				index++;
 			}
 		}
@@ -556,11 +559,11 @@ static int read_all_pages(void)
 	int fd;
 	uint64_t index;
 
-	if ((fd = open(path_mem, O_RDONLY)) < 0)
+	if ((fd = open(g.path_mem, O_RDONLY)) < 0)
 		return ERR_NO_MEM_INFO;
 
-	for (index = 0; index < mem_info.npages; index++) {
-		off_t addr = mem_info.pages[index].addr;
+	for (index = 0; index < g.mem_info.npages; index++) {
+		off_t addr = g.mem_info.pages[index].addr;
 		uint8_t byte;
 
 		if (lseek(fd, addr, SEEK_SET) == (off_t)-1)
@@ -579,33 +582,33 @@ static int read_all_pages(void)
  */
 static inline void show_key(void)
 {
-	if (view == VIEW_PAGE) {
-		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		mvwprintw(mainwin, LINES - 1, 0, "Page View, KEY: ");
-		wattrset(mainwin, COLOR_PAIR(WHITE_RED));
-		wprintw(mainwin, "A");
-		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		wprintw(mainwin, " Anon/File, ");
-		wattrset(mainwin, COLOR_PAIR(WHITE_YELLOW));
-		wprintw(mainwin, "P");
-		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		wprintw(mainwin, " Present in RAM, ");
-		wattrset(mainwin, COLOR_PAIR(WHITE_CYAN));
-		wprintw(mainwin, "D");
-		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		wprintw(mainwin, " Dirty, ");
-		wattrset(mainwin, COLOR_PAIR(WHITE_GREEN));
-		wprintw(mainwin, "S");
-		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		wprintw(mainwin, " Swap, ");
-		wattrset(mainwin, COLOR_PAIR(BLACK_WHITE));
-		wprintw(mainwin, ".");
-		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		wprintw(mainwin, " not in RAM");
-		wattrset(mainwin, COLOR_PAIR(BLACK_WHITE) | A_BOLD);
+	if (g.view == VIEW_PAGE) {
+		wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		mvwprintw(g.mainwin, LINES - 1, 0, "Page View, KEY: ");
+		wattrset(g.mainwin, COLOR_PAIR(WHITE_RED));
+		wprintw(g.mainwin, "A");
+		wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		wprintw(g.mainwin, " Anon/File, ");
+		wattrset(g.mainwin, COLOR_PAIR(WHITE_YELLOW));
+		wprintw(g.mainwin, "P");
+		wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		wprintw(g.mainwin, " Present in RAM, ");
+		wattrset(g.mainwin, COLOR_PAIR(WHITE_CYAN));
+		wprintw(g.mainwin, "D");
+		wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		wprintw(g.mainwin, " Dirty, ");
+		wattrset(g.mainwin, COLOR_PAIR(WHITE_GREEN));
+		wprintw(g.mainwin, "S");
+		wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		wprintw(g.mainwin, " Swap, ");
+		wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
+		wprintw(g.mainwin, ".");
+		wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		wprintw(g.mainwin, " not in RAM");
+		wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE) | A_BOLD);
 	} else {
-		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		mvwprintw(mainwin, LINES-1, 0, "%-*s", COLS, "Memory View");
+		wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		mvwprintw(g.mainwin, LINES-1, 0, "%-*s", COLS, "Memory View");
 	}
 }
 
@@ -618,32 +621,32 @@ static inline void show_help(void)
 	const int x = (COLS - 45) / 2;
 	const int y = (LINES - 10) / 2;
 
-	wattrset(mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
-	mvwprintw(mainwin, y + 0,  x,
+	wattrset(g.mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
+	mvwprintw(g.mainwin, y + 0,  x,
 		" HELP (press ? or h to toggle on/off)%6s", "");
-	mvwprintw(mainwin, y + 1,  x,
+	mvwprintw(g.mainwin, y + 1,  x,
 		"%43s", "");
-	mvwprintw(mainwin, y + 2,  x,
+	mvwprintw(g.mainwin, y + 2,  x,
 		" Esc or q   quit%27s", "");
-	mvwprintw(mainwin, y + 3,  x,
+	mvwprintw(g.mainwin, y + 3,  x,
 		" Tab        Toggle page information%8s", "");
-	mvwprintw(mainwin, y + 4,  x,
+	mvwprintw(g.mainwin, y + 4,  x,
 		" Enter      Toggle map/memory views%8s", "");
-	mvwprintw(mainwin, y + 5,  x,
+	mvwprintw(g.mainwin, y + 5,  x,
 		" + or z     Zoom in memory map%13s", "");
-	mvwprintw(mainwin, y + 6,  x,
+	mvwprintw(g.mainwin, y + 6,  x,
 		" - or Z     Zoom out memory map%12s", "");
-	mvwprintw(mainwin, y + 7,  x,
+	mvwprintw(g.mainwin, y + 7,  x,
 		" R or r     Read pages (swap in all pages) ");
-	mvwprintw(mainwin, y + 8,  x,
+	mvwprintw(g.mainwin, y + 8,  x,
 		" V or v     Toggle Virtual Memory Stats    ");
-	mvwprintw(mainwin, y + 9,  x,
+	mvwprintw(g.mainwin, y + 9,  x,
 		" PgUp       Scroll up 1/2 page%13s", "");
-	mvwprintw(mainwin, y + 10,  x,
+	mvwprintw(g.mainwin, y + 10,  x,
 		" PgDown     Scroll Down1/2 page%12s", "");
-	mvwprintw(mainwin, y + 11, x,
+	mvwprintw(g.mainwin, y + 11, x,
 		" Home       Move cursor back to top%8s", "");
-	mvwprintw(mainwin, y + 12, x,
+	mvwprintw(g.mainwin, y + 12, x,
 		" Cursor keys move Up/Down/Left/Right%7s", "");
 }
 
@@ -704,7 +707,7 @@ int main(int argc, char **argv)
 			break;
 		switch (c) {
 		case 'a':
-			auto_zoom = true;
+			g.auto_zoom = true;
 			break;
 		case 'd':
 			udelay = strtoul(optarg, NULL, 10);
@@ -723,10 +726,10 @@ int main(int argc, char **argv)
 				fprintf(stderr, "Invalid pid value\n");
 				exit(EXIT_FAILURE);
 			}
-			opt_flags |= OPT_FLAG_PID;
+			g.opt_flags |= OPT_FLAG_PID;
 			break;
 		case 'r':
-			opt_flags |= OPT_FLAG_READ_ALL_PAGES;
+			g.opt_flags |= OPT_FLAG_READ_ALL_PAGES;
 			break;
 		case 't':
 			ticks = strtol(optarg, NULL, 10);
@@ -747,7 +750,7 @@ int main(int argc, char **argv)
 			exit(EXIT_FAILURE);
 		}
 	}
-	if (!(opt_flags & OPT_FLAG_PID)) {
+	if (!(g.opt_flags & OPT_FLAG_PID)) {
 		fprintf(stderr, "Must provide process ID with -p option\n");
 		exit(EXIT_FAILURE);
 	}
@@ -760,12 +763,12 @@ int main(int argc, char **argv)
 		fprintf(stderr, "No such process %d\n", pid);
 		exit(EXIT_FAILURE);
 	}
-	page_size = sysconf(_SC_PAGESIZE);
-	if (page_size == (uint32_t)-1) {
+	g.page_size = sysconf(_SC_PAGESIZE);
+	if (g.page_size == (uint32_t)-1) {
 		/* Guess */
-		page_size = 4096UL;
+		g.page_size = 4096UL;
 	}
-	max_pages = ((uint64_t)((size_t)~0)) / page_size;
+	g.max_pages = ((uint64_t)((size_t)~0)) / g.page_size;
 	memset(&action, 0, sizeof(action));
 	action.sa_handler = handle_winch;
 	if (sigaction(SIGWINCH, &action, NULL) < 0) {
@@ -773,19 +776,19 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	snprintf(path_refs, sizeof(path_refs),
+	snprintf(g.path_refs, sizeof(g.path_refs),
 		"/proc/%i/clear_refs", pid);
-	snprintf(path_pagemap, sizeof(path_pagemap),
+	snprintf(g.path_pagemap, sizeof(g.path_pagemap),
 		"/proc/%i/pagemap", pid);
-	snprintf(path_maps, sizeof(path_maps),
+	snprintf(g.path_maps, sizeof(g.path_maps),
 		"/proc/%i/maps", pid);
-	snprintf(path_mem, sizeof(path_mem),
+	snprintf(g.path_mem, sizeof(g.path_mem),
 		"/proc/%i/mem", pid);
-	snprintf(path_status, sizeof(path_status),
+	snprintf(g.path_status, sizeof(g.path_status),
 		"/proc/%i/status", pid);
 
 	tick = ticks;	/* force immediate page load */
-	resized = false;
+	g.resized = false;
 	initscr();
 	start_color();
 	cbreak();
@@ -793,7 +796,7 @@ int main(int argc, char **argv)
 	nodelay(stdscr, 1);
 	keypad(stdscr, 1);
 	curs_set(0);
-	mainwin = newwin(LINES, COLS, 0, 0);
+	g.mainwin = newwin(LINES, COLS, 0, 0);
 
 	init_pair(WHITE_RED, COLOR_WHITE, COLOR_RED);
 	init_pair(WHITE_BLUE, COLOR_WHITE, COLOR_BLUE);
@@ -812,7 +815,7 @@ int main(int argc, char **argv)
 	do {
 		int ch, blink_attrs;
 		char curch;
-		position_t *p = &position[view];
+		position_t *p = &position[g.view];
 		uint64_t show_addr;
 		float percent;
 
@@ -820,11 +823,11 @@ int main(int argc, char **argv)
 		 *  SIGWINCH window resize triggered so
 		 *  handle window resizing in ugly way
 		 */
-		if (resized) {
+		if (g.resized) {
 			int64_t cursor_index = page_index +
 				(p->xpos + (p->ypos * p->xmax));
 
-			delwin(mainwin);
+			delwin(g.mainwin);
 			endwin();
 			refresh();
 			clear();
@@ -834,9 +837,9 @@ int main(int argc, char **argv)
 				rc = ERR_SMALL_WIN;
 				break;
 			}
-			mainwin = newwin(LINES, COLS, 0, 0);
-			wbkgd(mainwin, COLOR_PAIR(RED_BLUE));
-			resized = false;
+			g.mainwin = newwin(LINES, COLS, 0, 0);
+			wbkgd(g.mainwin, COLOR_PAIR(RED_BLUE));
+			g.resized = false;
 			p->xpos = 0;
 			p->ypos = 0;
 			page_index = cursor_index;
@@ -846,33 +849,33 @@ int main(int argc, char **argv)
 		 *  Window getting too small, tell user
 		 */
 		if ((COLS < 80) || (LINES < 20)) {
-			wbkgd(mainwin, COLOR_PAIR(RED_BLUE));
-			wattrset(mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
-			mvwprintw(mainwin, LINES / 2, (COLS / 2) - 10,
+			wbkgd(g.mainwin, COLOR_PAIR(RED_BLUE));
+			wattrset(g.mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
+			mvwprintw(g.mainwin, LINES / 2, (COLS / 2) - 10,
 				"[ WINDOW TOO SMALL ]");
-			wrefresh(mainwin);
+			wrefresh(g.mainwin);
 			refresh();
 			usleep(udelay);
 			continue;
 		}
 
-		update_xmax(position, view);
-		wbkgd(mainwin, COLOR_PAIR(RED_BLUE));
+		update_xmax(position, g.view);
+		wbkgd(g.mainwin, COLOR_PAIR(RED_BLUE));
 
-		if ((view == VIEW_PAGE) &&
+		if ((g.view == VIEW_PAGE) &&
 		    ((rc = read_maps()) < 0))
 			break;
 
-		if ((view == VIEW_PAGE) && auto_zoom) {
+		if ((g.view == VIEW_PAGE) && g.auto_zoom) {
 			int32_t window_pages = p->xmax * (LINES - 3);
-			zoom = mem_info.npages / window_pages;
+			zoom = g.mem_info.npages / window_pages;
 			zoom = MINIMUM(MAX_ZOOM, zoom);
 			zoom = MAXIMUM(MIN_ZOOM, zoom);
 		}
 
-		if (opt_flags & OPT_FLAG_READ_ALL_PAGES) {
+		if (g.opt_flags & OPT_FLAG_READ_ALL_PAGES) {
 			read_all_pages();
-			opt_flags &= ~OPT_FLAG_READ_ALL_PAGES;
+			g.opt_flags &= ~OPT_FLAG_READ_ALL_PAGES;
 		}
 
 		tick++;
@@ -880,7 +883,7 @@ int main(int argc, char **argv)
 			int fd;
 			tick = 0;
 
-			fd = open(path_refs, O_RDWR);
+			fd = open(g.path_refs, O_RDWR);
 			if (fd > -1) {
 				ret = write(fd, "4", 1);
 				(void)ret;
@@ -892,71 +895,71 @@ int main(int argc, char **argv)
 		show_key();
 
 		blink++;
-		if (view == VIEW_MEM) {
+		if (g.view == VIEW_MEM) {
 			int32_t curxpos = (p->xpos * 3) + ADDR_OFFSET;
 			position_t *pc = &position[VIEW_PAGE];
 			int64_t cursor_index = page_index +
 				(pc->xpos + (pc->ypos * pc->xmax));
-			percent = (mem_info.npages > 0) ?
-				100.0 * cursor_index / mem_info.npages : 100;
+			percent = (g.mem_info.npages > 0) ?
+				100.0 * cursor_index / g.mem_info.npages : 100;
 
-			map = mem_info.pages[cursor_index].map;
-			show_addr = mem_info.pages[cursor_index].addr +
+			map = g.mem_info.pages[cursor_index].map;
+			show_addr = g.mem_info.pages[cursor_index].addr +
 				data_index + (p->xpos + (p->ypos * p->xmax));
-			if (show_memory(cursor_index, data_index, page_size, p->xmax) < 0)
+			if (show_memory(cursor_index, data_index, p->xmax) < 0)
 				break;
 
 			blink_attrs = A_BOLD | ((blink & BLINK_MASK) ?
 				COLOR_PAIR(WHITE_BLUE) :
 				COLOR_PAIR(BLUE_WHITE));
-			wattrset(mainwin, blink_attrs);
-			curch = mvwinch(mainwin, p->ypos + 1, curxpos) & A_CHARTEXT;
-			mvwprintw(mainwin, p->ypos + 1, curxpos, "%c", curch);
+			wattrset(g.mainwin, blink_attrs);
+			curch = mvwinch(g.mainwin, p->ypos + 1, curxpos) & A_CHARTEXT;
+			mvwprintw(g.mainwin, p->ypos + 1, curxpos, "%c", curch);
 
 			blink_attrs = A_BOLD | ((blink & BLINK_MASK) ?
 				COLOR_PAIR(BLACK_WHITE) : COLOR_PAIR(WHITE_BLACK));
 			curxpos = ADDR_OFFSET + (p->xmax * 3) + p->xpos;
-			wattrset(mainwin, blink_attrs);
-			curch = mvwinch(mainwin, p->ypos + 1, curxpos) & A_CHARTEXT;
-			mvwprintw(mainwin, p->ypos + 1, curxpos, "%c", curch);
+			wattrset(g.mainwin, blink_attrs);
+			curch = mvwinch(g.mainwin, p->ypos + 1, curxpos) & A_CHARTEXT;
+			mvwprintw(g.mainwin, p->ypos + 1, curxpos, "%c", curch);
 		} else {
 			int32_t curxpos = p->xpos + ADDR_OFFSET;
 			int64_t cursor_index = page_index +
 				zoom * (p->xpos + (p->ypos * p->xmax));
-			percent = (mem_info.npages > 0) ?
-				100.0 * cursor_index / mem_info.npages : 100;
+			percent = (g.mem_info.npages > 0) ?
+				100.0 * cursor_index / g.mem_info.npages : 100;
 
-			map = mem_info.pages[cursor_index].map;
-			show_addr = mem_info.pages[cursor_index].addr;
+			map = g.mem_info.pages[cursor_index].map;
+			show_addr = g.mem_info.pages[cursor_index].addr;
 			show_pages(cursor_index, page_index, p->xmax, zoom);
 
 			blink_attrs = A_BOLD | ((blink & BLINK_MASK) ?
 				COLOR_PAIR(BLACK_WHITE) : COLOR_PAIR(WHITE_BLACK));
-			wattrset(mainwin, blink_attrs);
-			curch = mvwinch(mainwin, p->ypos + 1, curxpos) & A_CHARTEXT;
-			mvwprintw(mainwin, p->ypos + 1, curxpos, "%c", curch);
+			wattrset(g.mainwin, blink_attrs);
+			curch = mvwinch(g.mainwin, p->ypos + 1, curxpos) & A_CHARTEXT;
+			mvwprintw(g.mainwin, p->ypos + 1, curxpos, "%c", curch);
 		}
-		if (help_view)
+		if (g.help_view)
 			show_help();
 
-		wattrset(mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
 		if (!map) {
-			mvwprintw(mainwin, 0, 0,
+			mvwprintw(g.mainwin, 0, 0,
 				"Pagemon 0x---------------- %4.4s x %-3d ",
-				auto_zoom && ((blink & BLINK_MASK))  ? "Auto" : "Zoom", zoom);
-			wprintw(mainwin, "---- --:-- %-20.20s", "[Not Mapped]");
+				g.auto_zoom && ((blink & BLINK_MASK))  ? "Auto" : "Zoom", zoom);
+			wprintw(g.mainwin, "---- --:-- %-20.20s", "[Not Mapped]");
 		} else {
-			mvwprintw(mainwin, 0, 0, "Pagemon 0x%16.16" PRIx64
+			mvwprintw(g.mainwin, 0, 0, "Pagemon 0x%16.16" PRIx64
 				" %4.4s x %-3d ", show_addr,
-				auto_zoom && ((blink & BLINK_MASK)) ? "Auto" : "Zoom", zoom);
-			wprintw(mainwin, "%s %s %-20.20s",
+				g.auto_zoom && ((blink & BLINK_MASK)) ? "Auto" : "Zoom", zoom);
+			wprintw(g.mainwin, "%s %s %-20.20s",
 				map->attr, map->dev,
 				map->name[0] == '\0' ?
 					"[Anonymous]" : basename(map->name));
 		}
-		mvwprintw(mainwin, 0, COLS - 8, " %6.1f%%", percent);
+		mvwprintw(g.mainwin, 0, COLS - 8, " %6.1f%%", percent);
 
-		wrefresh(mainwin);
+		wrefresh(g.mainwin);
 		refresh();
 
 		prev_page_index = page_index;
@@ -973,17 +976,17 @@ int main(int argc, char **argv)
 			break;
 		case '\t':
 			/* Toggle Tab view */
-			tab_view = !tab_view;
+			g.tab_view = !g.tab_view;
 			break;
 		case 'v':
 		case 'V':
 			/* Toggle VM stats view */
-			vm_view = !vm_view;
+			g.vm_view = !g.vm_view;
 			break;
 		case '?':
 		case 'h':
 			/* Toggle Help */
-			help_view = !help_view;
+			g.help_view = !g.help_view;
 			break;
 		case 'r':
 		case 'R':
@@ -992,18 +995,18 @@ int main(int argc, char **argv)
 		case 'a':
 		case 'A':
 			/* Toggle auto zoom */
-			auto_zoom = !auto_zoom;
+			g.auto_zoom = !g.auto_zoom;
 			break;
 		case '\n':
 			/* Toggle MAP / MEMORY views */
-			view ^= 1;
-			p = &position[view];
+			g.view ^= 1;
+			p = &position[g.view];
 			blink = 0;
 			break;
 		case '+':
 		case 'z':
 			/* Zoom in */
-			if (view == VIEW_PAGE) {
+			if (g.view == VIEW_PAGE) {
 				zoom++ ;
 				zoom = MINIMUM(MAX_ZOOM, zoom);
 				reset_cursor(p, &data_index, &page_index);
@@ -1012,7 +1015,7 @@ int main(int argc, char **argv)
 		case '-':
 		case 'Z':
 			/* Zoom out */
-			if (view == VIEW_PAGE) {
+			if (g.view == VIEW_PAGE) {
 				zoom--;
 				zoom = MAXIMUM(MIN_ZOOM, zoom);
 				reset_cursor(p, &data_index, &page_index);
@@ -1030,36 +1033,36 @@ int main(int argc, char **argv)
 			break;
 		case KEY_DOWN:
 			blink = 0;
-			if (view == VIEW_PAGE)
+			if (g.view == VIEW_PAGE)
 				data_index = 0;
 			p->ypos++;
 			break;
 		case KEY_UP:
 			blink = 0;
-			if (view == VIEW_PAGE)
+			if (g.view == VIEW_PAGE)
 				data_index = 0;
 			p->ypos--;
 			break;
 		case KEY_LEFT:
 			blink = 0;
-			if (view == VIEW_PAGE)
+			if (g.view == VIEW_PAGE)
 				data_index = 0;
 			p->xpos--;
 			break;
 		case KEY_RIGHT:
 			blink = 0;
-			if (view == VIEW_PAGE)
+			if (g.view == VIEW_PAGE)
 				data_index = 0;
 			p->xpos++;
 			break;
 		case KEY_NPAGE:
-			if (view == VIEW_PAGE)
+			if (g.view == VIEW_PAGE)
 				data_index = 0;
 			blink = 0;
 			p->ypos += (LINES - 2) / 2;
 			break;
 		case KEY_PPAGE:
-			if (view == VIEW_PAGE)
+			if (g.view == VIEW_PAGE)
 				data_index = 0;
 			blink = 0;
 			p->ypos -= (LINES - 2) / 2;
@@ -1068,13 +1071,13 @@ int main(int argc, char **argv)
 			reset_cursor(p, &data_index, &page_index);
 			break;
 		case KEY_END:
-			if (view == VIEW_PAGE) {
-				page_index = mem_info.npages - 1;
+			if (g.view == VIEW_PAGE) {
+				page_index = g.mem_info.npages - 1;
 				p->xpos = 0;
 				p->ypos = LINES - 3;
 			} else {
 				p->ypos = LINES - 3;
-				data_index = page_size -
+				data_index = g.page_size -
 					((int64_t)p->xmax * (LINES - 2));
 			}
 			p->xpos = p->xmax - 1;
@@ -1082,7 +1085,7 @@ int main(int argc, char **argv)
 		}
 
 		position[VIEW_PAGE].ypos_max =
-			(((mem_info.npages - page_index) / zoom) - p->xpos) /
+			(((g.mem_info.npages - page_index) / zoom) - p->xpos) /
 			position[0].xmax;
 		position[VIEW_MEM].ypos_max = LINES - 2;
 
@@ -1101,13 +1104,13 @@ int main(int argc, char **argv)
 		 *  different views and how to handle the
 		 *  scroll data and page index offsets
 		 */
-		if (view == VIEW_MEM) {
+		if (g.view == VIEW_MEM) {
 			if (p->ypos > LINES - 3) {
 				data_index += p->xmax *
 					(p->ypos - (LINES - 3));
 				p->ypos = LINES - 3;
-				if (data_index >= page_size) {
-					data_index -= page_size;
+				if (data_index >= g.page_size) {
+					data_index -= g.page_size;
 					page_index++;
 				}
 			}
@@ -1115,7 +1118,7 @@ int main(int argc, char **argv)
 				data_index -= p->xmax * (-p->ypos);
 				p->ypos = 0;
 				if (data_index < 0) {
-					data_index += page_size;
+					data_index += g.page_size;
 					page_index--;
 				}
 			}
@@ -1135,13 +1138,13 @@ int main(int argc, char **argv)
 			data_index = 0;
 			p->ypos = 0;
 		}
-		if (view == VIEW_MEM) {
+		if (g.view == VIEW_MEM) {
 			position_t *pc = &position[VIEW_PAGE];
 			int64_t cursor_index = page_index +
 				(pc->xpos + (pc->ypos * pc->xmax));
-			uint64_t addr = mem_info.pages[cursor_index].addr +
+			uint64_t addr = g.mem_info.pages[cursor_index].addr +
 				data_index + (p->xpos + (p->ypos * p->xmax));
-			if (addr >= mem_info.last_addr) {
+			if (addr >= g.mem_info.last_addr) {
 				page_index = prev_page_index;
 				data_index = prev_data_index;
 				p->xpos = p->xpos_prev;
@@ -1149,13 +1152,13 @@ int main(int argc, char **argv)
 			}
 		} else {
 			if ((uint64_t)page_index + ((int64_t)zoom * (p->xpos +
-			    (p->ypos * p->xmax))) >= mem_info.npages) {
+			    (p->ypos * p->xmax))) >= g.mem_info.npages) {
 				int64_t zoom_xmax = (int64_t)zoom * p->xmax;
 				int64_t lines =
-					((zoom_xmax - 1) + mem_info.npages) / zoom_xmax;
+					((zoom_xmax - 1) + g.mem_info.npages) / zoom_xmax;
 				uint64_t npages =
 					(zoom_xmax * lines);
-				int64_t diff = (npages - mem_info.npages) / zoom;
+				int64_t diff = (npages - g.mem_info.npages) / zoom;
 				int64_t last = p->xmax - diff;
 
 				if (lines < LINES) {
@@ -1169,9 +1172,9 @@ int main(int argc, char **argv)
 					p->xpos = last - 1;
 			}
 		}
-		if (view == VIEW_PAGE) {
-			free(mem_info.pages);
-			mem_info.npages = 0;
+		if (g.view == VIEW_PAGE) {
+			free(g.mem_info.pages);
+			g.mem_info.npages = 0;
 		}
 		usleep(udelay);
 	} while (do_run);
@@ -1198,7 +1201,7 @@ int main(int argc, char **argv)
 	case ERR_TOO_MANY_PAGES:
 		fprintf(stderr, "Too many pages in process for %s\n", APP_NAME);
 		printf("%" PRIu64 " vs %" PRIu64 "\n",
-			mem_info.npages , max_pages);
+			g.mem_info.npages , g.max_pages);
 		break;
 	default:
 		fprintf(stderr, "Unknown failure (%d)\n", rc);
