@@ -580,7 +580,7 @@ static int read_all_pages(void)
 		return ERR_NO_MEM_INFO;
 
 	for (index = 0; index < g.mem_info.npages; index++) {
-		off_t addr = g.mem_info.pages[index].addr;
+		const off_t addr = g.mem_info.pages[index].addr;
 		uint8_t byte;
 
 		if (lseek(fd, addr, SEEK_SET) == (off_t)-1)
@@ -841,7 +841,8 @@ int main(int argc, char **argv)
 				break;
 		}
 		if ((g.view == VIEW_PAGE) && g.auto_zoom) {
-			int32_t window_pages = p->xmax * (p->ymax - 1);
+			const int32_t window_pages = p->xmax * (p->ymax - 1);
+
 			zoom = g.mem_info.npages / window_pages;
 			zoom = MINIMUM(MAX_ZOOM, zoom);
 			zoom = MAXIMUM(MIN_ZOOM, zoom);
@@ -870,7 +871,7 @@ int main(int argc, char **argv)
 		 *  handle window resizing in ugly way
 		 */
 		if (g.resized) {
-			int64_t cursor_index = page_index +
+			const int64_t cursor_index = page_index +
 				(p->xpos + (p->ypos * p->xmax));
 
 			delwin(g.mainwin);
@@ -912,8 +913,8 @@ int main(int argc, char **argv)
 		blink++;
 		if (g.view == VIEW_MEM) {
 			int32_t curxpos = (p->xpos * 3) + ADDR_OFFSET;
-			position_t *pc = &position[VIEW_PAGE];
-			int64_t cursor_index = page_index +
+			const position_t *pc = &position[VIEW_PAGE];
+			const int64_t cursor_index = page_index +
 				(pc->xpos + (pc->ypos * pc->xmax));
 			percent = (g.mem_info.npages > 0) ?
 				100.0 * cursor_index / g.mem_info.npages : 100;
@@ -949,7 +950,7 @@ int main(int argc, char **argv)
 			mvwprintw(g.mainwin, p->ypos + 1, curxpos, "%c", cursor_ch);
 		} else {
 			int32_t curxpos = p->xpos + ADDR_OFFSET;
-			int64_t cursor_index = page_index +
+			const int64_t cursor_index = page_index +
 				zoom * (p->xpos + (p->ypos * p->xmax));
 			percent = (g.mem_info.npages > 0) ?
 				100.0 * cursor_index / g.mem_info.npages : 100;
@@ -1193,11 +1194,12 @@ force_ch:
 			p->ypos = 0;
 		}
 		if (g.view == VIEW_MEM) {
-			position_t *pc = &position[VIEW_PAGE];
+			const position_t *pc = &position[VIEW_PAGE];
 			const int64_t cursor_index = page_index +
 				(pc->xpos + (pc->ypos * pc->xmax));
 			const uint64_t addr = g.mem_info.pages[cursor_index].addr +
 				data_index + (p->xpos + (p->ypos * p->xmax));
+
 			if (addr >= g.mem_info.last_addr) {
 				page_index = prev_page_index;
 				data_index = prev_data_index;
