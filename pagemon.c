@@ -394,8 +394,7 @@ static void show_page_bits(
 static int show_pages(
 	const int64_t cursor_index,
 	const int64_t page_index,
-	const int32_t xmax,
-	const int32_t ymax,
+	const position_t *p,
 	const int32_t zoom)
 {
 	int32_t i;
@@ -404,6 +403,7 @@ static int show_pages(
 		__builtin_clzll((g.page_size))));
 	int fd;
 	map_t *map = g.mem_info.pages[cursor_index].map;
+	const int32_t xmax = p->xmax, ymax = p->ymax;
 
 	if ((fd = open(g.path_pagemap, O_RDONLY)) < 0)
 		return ERR_NO_MAP_INFO;
@@ -485,13 +485,13 @@ static int show_pages(
 static int show_memory(
 	const int64_t page_index,
 	int64_t data_index,
-	const int32_t xmax,
-	const int32_t ymax)
+	const position_t *p)
 {
 	int32_t i;
 	uint64_t index = page_index;
 	int fd;
 	uint64_t addr;
+	const int32_t xmax = p->xmax, ymax = p->ymax;
 
 	if ((fd = open(g.path_mem, O_RDONLY)) < 0)
 		return ERR_NO_MEM_INFO;
@@ -934,7 +934,7 @@ int main(int argc, char **argv)
 			map = g.mem_info.pages[cursor_index].map;
 			show_addr = g.mem_info.pages[cursor_index].addr +
 				data_index + (p->xpos + (p->ypos * p->xmax));
-			if (show_memory(cursor_index, data_index, p->xmax, p->ymax) < 0)
+			if (show_memory(cursor_index, data_index, p) < 0)
 				break;
 
 			blink_attrs = A_BOLD | ((blink & BLINK_MASK) ?
@@ -969,7 +969,7 @@ int main(int argc, char **argv)
 
 			map = g.mem_info.pages[cursor_index].map;
 			show_addr = g.mem_info.pages[cursor_index].addr;
-			show_pages(cursor_index, page_index, p->xmax, p->ymax, zoom);
+			show_pages(cursor_index, page_index, p, zoom);
 
 			blink_attrs = A_BOLD | ((blink & BLINK_MASK) ?
 				COLOR_PAIR(BLACK_WHITE) :
