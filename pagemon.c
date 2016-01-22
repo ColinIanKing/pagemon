@@ -915,7 +915,7 @@ int main(int argc, char **argv)
 	update_xymax(position, 0);
 	update_xymax(position, 1);
 
-	do {
+	for (;;) {
 		int ch, blink_attrs;
 		char cursor_ch;
 		position_t *p = &position[g.view];
@@ -1330,9 +1330,16 @@ force_ch:
 					p->xpos = last - 1;
 			}
 		}
-		usleep(udelay);
-	} while (!g.terminate);
+		if (g.terminate)
+			break;
 
+		usleep(udelay);
+	}
+
+	wclear(g.mainwin);
+	delwin(g.mainwin);
+	refresh();
+	clear();
 	endwin();
 
 	ret = EXIT_FAILURE;
