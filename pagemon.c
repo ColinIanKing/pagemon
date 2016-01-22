@@ -37,11 +37,11 @@
 #define APP_NAME		"pagemon"
 #define MAX_MAPS		(65536)
 
-#define ADDR_OFFSET		(17)
-#define HEX_WIDTH		(3)
+#define ADDR_OFFSET		(17)	/* Display x offset from address */
+#define HEX_WIDTH		(3)	/* Width of each 2 hex digit value */
 
-#define VIEW_PAGE		(0)
-#define VIEW_MEM		(1)
+#define VIEW_PAGE		(0)	/* View pages in memory map */
+#define VIEW_MEM		(1)	/* View memory in hex */
 
 #define MIN_TICKS		(1)
 #define MAX_TICKS		(1000)
@@ -52,12 +52,13 @@
 #define MAXIMUM(a, b)		((a) > (b) ? (a) : (b))
 #define MINIMUM(a, b)		((a) < (b) ? (a) : (b))
 
-#define DEFAULT_UDELAY		(15000)
+#define DEFAULT_UDELAY		(15000)	/* Delay between each refresh */
+#define PROCPATH_MAX		(32)	/* Size of proc pathnames */
+#define BLINK_MASK		(0x20)	/* Cursor blink counter mask */
 
-#define PROCPATH_MAX		(32)
-
-#define BLINK_MASK		(0x20)
-
+/*
+ *  Memory size scaling
+ */
 #define KB			(1024ULL)
 #define MB			(KB * KB)
 #define GB			(KB * KB * KB)
@@ -68,7 +69,7 @@
  */
 #define OK			(0)
 #define ERR_NO_MAP_INFO		(-1)
-#define ERR_NO_MEM_INFO		(-2)
+#define ERR_NO_MEM_INFO		(-2)	
 #define ERR_SMALL_WIN		(-3)
 #define ERR_ALLOC_NOMEM		(-4)
 #define ERR_TOO_MANY_PAGES	(-5)
@@ -226,6 +227,10 @@ static int read_faults(
 		return -1;
 	buf[sz - 1] = '\0';
 
+	/*
+	 * Skipping over fields is less expensive
+	 * than lots of sscanf fields being parsed
+	 */
 	while (*ptr) {
 		if (*ptr == ' ') {
 			count++;
