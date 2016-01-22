@@ -340,7 +340,7 @@ static void show_vm(void)
 {
 	FILE *fp;
 	char buffer[4096];
-	int y = 3;
+	int y = 2;
 	const int x = COLS - 26;
 	uint64_t major, minor;
 
@@ -396,24 +396,24 @@ static void show_page_bits(
 
 	mem_to_str(map->end - map->begin, buf, sizeof(buf) - 1);
 	wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-	mvwprintw(g.mainwin, 3, 4,
+	mvwprintw(g.mainwin, 2, 4,
 		" Page:      0x%16.16" PRIx64 "%18s",
 		g.mem_info.pages[index].addr, "");
-	mvwprintw(g.mainwin, 4, 4,
+	mvwprintw(g.mainwin, 3, 4,
 		" Page Size: 0x%8.8" PRIx32 " bytes%20s",
 		g.page_size, "");
-	mvwprintw(g.mainwin, 5, 4,
+	mvwprintw(g.mainwin, 4, 4,
 		" Map:       0x%16.16" PRIx64 "-%16.16" PRIx64 " ",
 		map->begin, map->end - 1);
-	mvwprintw(g.mainwin, 6, 4,
+	mvwprintw(g.mainwin, 5, 4,
 		" Map Size:  %s%27s", buf, "");
-	mvwprintw(g.mainwin, 7, 4,
+	mvwprintw(g.mainwin, 6, 4,
 		" Device:    %5.5s%31s",
 		map->dev, "");
-	mvwprintw(g.mainwin, 8, 4,
+	mvwprintw(g.mainwin, 7, 4,
 		" Prot:      %4.4s%32s",
 		map->attr, "");
-	mvwprintw(g.mainwin, 9, 4,
+	mvwprintw(g.mainwin, 8, 4,
 		" Map Name:  %-35.35s ", map->name[0] == '\0' ?
 			"[Anonymous]" : basename(map->name));
 
@@ -423,34 +423,34 @@ static void show_page_bits(
 	if (read(fd, &info, sizeof(info)) != sizeof(info))
 		return;
 
-	mvwprintw(g.mainwin, 10, 4,
+	mvwprintw(g.mainwin, 9, 4,
 		" Flag:      0x%16.16" PRIx64 "%18s", info, "");
 	if (info & PAGE_SWAPPED) {
-		mvwprintw(g.mainwin, 11, 4,
+		mvwprintw(g.mainwin, 10, 4,
 			"   Swap Type:           0x%2.2" PRIx64 "%20s",
 			info & 0x1f, "");
-		mvwprintw(g.mainwin, 12, 4,
+		mvwprintw(g.mainwin, 11, 4,
 			"   Swap Offset:         0x%16.16" PRIx64 "%6s",
 			(info & 0x00ffffffffffffffULL) >> 5, "");
 	} else {
-		mvwprintw(g.mainwin, 11, 4, "%48s", "");
-		mvwprintw(g.mainwin, 12, 4,
+		mvwprintw(g.mainwin, 10, 4, "%48s", "");
+		mvwprintw(g.mainwin, 11, 4,
 			"   Page Frame Number:   0x%16.16" PRIx64 "%6s",
 			info & 0x00ffffffffffffffULL, "");
 	}
-	mvwprintw(g.mainwin, 13, 4,
+	mvwprintw(g.mainwin, 12, 4,
 		"   Soft-dirty PTE:      %3s%21s",
 		(info & PAGE_PTE_SOFT_DIRTY) ? "Yes" : "No ", "");
-	mvwprintw(g.mainwin, 14, 4,
+	mvwprintw(g.mainwin, 13, 4,
 		"   Exclusively Mapped:  %3s%21s",
 		(info & PAGE_EXCLUSIVE_MAPPED) ? "Yes" : "No ", "");
-	mvwprintw(g.mainwin, 15, 4,
+	mvwprintw(g.mainwin, 14, 4,
 		"   File or Shared Anon: %3s%21s",
 		(info & PAGE_FILE_SHARED_ANON) ? "Yes" : "No ", "");
-	mvwprintw(g.mainwin, 16, 4,
+	mvwprintw(g.mainwin, 15, 4,
 		"   Present in Swap:     %3s%21s",
 		(info & PAGE_SWAPPED) ? "Yes" : "No ", "");
-	mvwprintw(g.mainwin, 17, 4,
+	mvwprintw(g.mainwin, 16, 4,
 		"   Present in RAM:      %3s%21s",
 		(info & PAGE_PRESENT) ? "Yes" : "No ", "");
 }
