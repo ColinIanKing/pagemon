@@ -139,7 +139,8 @@ typedef struct {
 	char path_pagemap[PATH_MAX];	/* /proc/$PID/pagemap */
 	char path_maps[PATH_MAX];	/* /proc/$PID/maps */
 	char path_mem[PATH_MAX];	/* /proc/$PID/mem */
-	char path_status[PATH_MAX];	/* /proc/$PID/statys */
+	char path_status[PATH_MAX];	/* /proc/$PID/status */
+	char path_stat[PATH_MAX];	/* /proc/$PID/stat */
 } global_t;
 
 static global_t g;
@@ -167,6 +168,48 @@ static void mem_to_str(const uint64_t val, char *buf, const size_t buflen)
 		unit = 'T';
 	}
 	snprintf(buf, buflen, "%7" PRIu64 " %c", scaled, unit);
+}
+
+/*
+ *  read_faults()
+ *	read minor and major page faults
+ */
+static int read_faults(
+	uint64_t *minor_flt,
+	uint64_t *major_flt)
+{
+	int fd;
+	int count = 0;
+	ssize_t sz;
+	char buf[4096], *ptr = buf;
+
+	*minor_flt = 0;
+	*major_flt = 0;
+
+	if ((fd = open(g.path_stat, O_RDONLY)) < 0)
+		return -1;
+	sz = read(fd, buf, sizeof(buf));
+	(void)close(fd);
+
+	if ((sz < 1) || (sz > (ssize_t)sizeof(buf)))
+		return -1;
+	buf[sz - 1] = '\0';
+
+	while (*ptr) {
+		if (*ptr == ' ') {
+			count++;
+			if (count == 9)
+				break;
+		}
+		ptr++;
+	}
+	if (!*ptr)
+		return -1;
+
+	sscanf(ptr, "%" SCNu64 " %*u %" SCNu64,
+		minor_flt, major_flt);
+
+	return 0;
 }
 
 /*
@@ -299,6 +342,7 @@ static void show_vm(void)
 	char buffer[4096];
 	int y = 3;
 	const int x = COLS - 26;
+	uint64_t major, minor;
 
 	fp = fopen(g.path_status, "r");
 	if (fp == NULL)
@@ -325,6 +369,16 @@ static void show_vm(void)
 		}
 	}
 	fclose(fp);
+
+	if (read_faults(&minor, &major) < 0)
+		return;
+
+	mvwprintw(g.mainwin, y, x, "%-22s", "Page Faults:");
+	y++;
+	mvwprintw(g.mainwin, y, x, "Minor: %12" PRIu64 "   ", minor);
+	y++;
+	mvwprintw(g.mainwin, y, x, "Major: %12" PRIu64 "   ", major);
+	y++;
 }
 
 /*
@@ -834,6 +888,8 @@ int main(int argc, char **argv)
 		"/proc/%i/mem", pid);
 	snprintf(g.path_status, sizeof(g.path_status),
 		"/proc/%i/status", pid);
+	snprintf(g.path_stat, sizeof(g.path_stat),
+		"/proc/%i/stat", pid);
 
 	initscr();
 	start_color();
@@ -936,7 +992,7 @@ int main(int argc, char **argv)
 		/*
 		 *  Window getting too small, tell user
 		 */
-		if ((COLS < 80) || (LINES < 20)) {
+		if ((COLS < 80) || (LINES < 21)) {
 			wclear(g.mainwin);
 			wbkgd(g.mainwin, COLOR_PAIR(RED_BLUE));
 			wattrset(g.mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
