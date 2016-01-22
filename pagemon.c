@@ -52,6 +52,8 @@
 #define MAXIMUM(a, b)		((a) > (b) ? (a) : (b))
 #define MINIMUM(a, b)		((a) < (b) ? (a) : (b))
 
+#define DEFAULT_UDELAY		(15000)
+
 #define PROCPATH_MAX		(32)
 
 #define BLINK_MASK		(0x20)
@@ -354,13 +356,14 @@ static void show_usage(void)
 		"Usage: " APP_NAME " [options]\n"
 		" -a        enable automatic zoom mode\n"
 		" -d        delay in microseconds between refreshes, "
-			"default 10000\n"
+			"default %u\n"
 		" -h        help\n"
 		" -p pid    process ID to monitor\n"
 		" -r        read (page back in) pages at start\n"
 		" -t ticks  ticks between dirty page checks\n"
 		" -v        enable VM view\n"
-		" -z zoom   set page zoom scale\n");
+		" -z zoom   set page zoom scale\n",
+		DEFAULT_UDELAY);
 }
 
 /*
@@ -386,14 +389,14 @@ static void show_vm(void)
 		uint64_t sz;
 
 		if (sscanf(buffer, "State: %5s %12s", state, longstate) == 2) {
-			mvwprintw(g.mainwin, y, x, "State:    %-12.12s",
+			mvwprintw(g.mainwin, y, x, " State:    %-12.12s ",
 				longstate);
 			y++;
 			continue;
 		}
 		if (sscanf(buffer, "Vm%8s %" SCNu64 "%7s",
 		    vmname, &sz, size) == 3) {
-			mvwprintw(g.mainwin, y, x, "Vm%-6.6s %10" PRIu64 " %s",
+			mvwprintw(g.mainwin, y, x, " Vm%-6.6s %10" PRIu64 " %s ",
 				vmname, sz, size);
 			y++;
 			continue;
@@ -404,11 +407,11 @@ static void show_vm(void)
 	if (read_faults(&minor, &major) < 0)
 		return;
 
-	mvwprintw(g.mainwin, y, x, "%-22s", "Page Faults:");
+	mvwprintw(g.mainwin, y, x, " %-23s", "Page Faults:");
 	y++;
-	mvwprintw(g.mainwin, y, x, "Minor: %12" PRIu64 "   ", minor);
+	mvwprintw(g.mainwin, y, x, " Minor: %12" PRIu64 "    ", minor);
 	y++;
-	mvwprintw(g.mainwin, y, x, "Major: %12" PRIu64 "   ", major);
+	mvwprintw(g.mainwin, y, x, " Major: %12" PRIu64 "    ", major);
 	y++;
 }
 
@@ -424,27 +427,28 @@ static void show_page_bits(
 	uint64_t info;
 	off_t offset;
 	char buf[16];
+	const int x = 2;
 
 	mem_to_str(map->end - map->begin, buf, sizeof(buf) - 1);
 	wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-	mvwprintw(g.mainwin, 2, 4,
+	mvwprintw(g.mainwin, 2, x,
 		" Page:      0x%16.16" PRIx64 "%18s",
 		g.mem_info.pages[index].addr, "");
-	mvwprintw(g.mainwin, 3, 4,
+	mvwprintw(g.mainwin, 3, x,
 		" Page Size: 0x%8.8" PRIx32 " bytes%20s",
 		g.page_size, "");
-	mvwprintw(g.mainwin, 4, 4,
+	mvwprintw(g.mainwin, 4, x,
 		" Map:       0x%16.16" PRIx64 "-%16.16" PRIx64 " ",
 		map->begin, map->end - 1);
-	mvwprintw(g.mainwin, 5, 4,
+	mvwprintw(g.mainwin, 5, x,
 		" Map Size:  %s%27s", buf, "");
-	mvwprintw(g.mainwin, 6, 4,
+	mvwprintw(g.mainwin, 6, x,
 		" Device:    %5.5s%31s",
 		map->dev, "");
-	mvwprintw(g.mainwin, 7, 4,
+	mvwprintw(g.mainwin, 7, x,
 		" Prot:      %4.4s%32s",
 		map->attr, "");
-	mvwprintw(g.mainwin, 8, 4,
+	mvwprintw(g.mainwin, 8, x,
 		" Map Name:  %-35.35s ", map->name[0] == '\0' ?
 			"[Anonymous]" : basename(map->name));
 
@@ -454,34 +458,34 @@ static void show_page_bits(
 	if (read(fd, &info, sizeof(info)) != sizeof(info))
 		return;
 
-	mvwprintw(g.mainwin, 9, 4,
+	mvwprintw(g.mainwin, 9, x,
 		" Flag:      0x%16.16" PRIx64 "%18s", info, "");
 	if (info & PAGE_SWAPPED) {
-		mvwprintw(g.mainwin, 10, 4,
+		mvwprintw(g.mainwin, 10, x,
 			"   Swap Type:           0x%2.2" PRIx64 "%20s",
 			info & 0x1f, "");
-		mvwprintw(g.mainwin, 11, 4,
+		mvwprintw(g.mainwin, 11, x,
 			"   Swap Offset:         0x%16.16" PRIx64 "%6s",
 			(info & 0x00ffffffffffffffULL) >> 5, "");
 	} else {
-		mvwprintw(g.mainwin, 10, 4, "%48s", "");
-		mvwprintw(g.mainwin, 11, 4,
+		mvwprintw(g.mainwin, 10, x, "%48s", "");
+		mvwprintw(g.mainwin, 11, x,
 			"   Page Frame Number:   0x%16.16" PRIx64 "%6s",
 			info & 0x00ffffffffffffffULL, "");
 	}
-	mvwprintw(g.mainwin, 12, 4,
+	mvwprintw(g.mainwin, 12, x,
 		"   Soft-dirty PTE:      %3s%21s",
 		(info & PAGE_PTE_SOFT_DIRTY) ? "Yes" : "No ", "");
-	mvwprintw(g.mainwin, 13, 4,
+	mvwprintw(g.mainwin, 13, x,
 		"   Exclusively Mapped:  %3s%21s",
 		(info & PAGE_EXCLUSIVE_MAPPED) ? "Yes" : "No ", "");
-	mvwprintw(g.mainwin, 14, 4,
+	mvwprintw(g.mainwin, 14, x,
 		"   File or Shared Anon: %3s%21s",
 		(info & PAGE_FILE_SHARED_ANON) ? "Yes" : "No ", "");
-	mvwprintw(g.mainwin, 15, 4,
+	mvwprintw(g.mainwin, 15, x,
 		"   Present in Swap:     %3s%21s",
 		(info & PAGE_SWAPPED) ? "Yes" : "No ", "");
-	mvwprintw(g.mainwin, 16, 4,
+	mvwprintw(g.mainwin, 16, x,
 		"   Present in RAM:      %3s%21s",
 		(info & PAGE_PRESENT) ? "Yes" : "No ", "");
 }
@@ -812,7 +816,7 @@ int main(int argc, char **argv)
 {
 	struct sigaction action;
 	map_t *map;
-	useconds_t udelay = 10000;
+	useconds_t udelay = DEFAULT_UDELAY;
 	position_t position[2];
 	int64_t page_index = 0, prev_page_index;
 	int64_t data_index = 0, prev_data_index;
