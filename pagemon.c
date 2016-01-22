@@ -61,6 +61,9 @@
 #define GB			(KB * KB * KB)
 #define TB			(KB * KB * KB * KB)
 
+/*
+ *  Error returns
+ */
 #define OK			(0)
 #define ERR_NO_MAP_INFO		(-1)
 #define ERR_NO_MEM_INFO		(-2)
@@ -70,6 +73,10 @@
 #define ERR_RESIZE_FAIL		(-6)
 #define ERR_NO_PROCESS		(-7)
 
+/*
+ *  PTE bits from uint64_t in /proc/PID/pagemap
+ *  for each mapped page
+ */
 #define	PAGE_PTE_SOFT_DIRTY	(1ULL << 55)
 #define	PAGE_EXCLUSIVE_MAPPED	(1ULL << 56)
 #define PAGE_FILE_SHARED_ANON	(1ULL << 61)
@@ -92,6 +99,9 @@ enum {
 	BLUE_WHITE,
 };
 
+/*
+ *  Memory map info, represents 1 or more pages
+ */
 typedef struct {
 	uint64_t begin;			/* Start of mapping */
 	uint64_t end;			/* End of mapping */
@@ -100,12 +110,21 @@ typedef struct {
 	char name[NAME_MAX + 1];	/* Name of mapping */
 } map_t;
 
+/*
+ *  Page info, 1 per page with map reference
+ *  to the memory map it belongs to
+ */
 typedef struct {
 	uint64_t addr;			/* Address */
 	map_t   *map;			/* Mapping it is in */
 	int64_t  index;			/* Index into map */
 } page_t;
 
+/*
+ *  General memory mapping info, containing
+ *  a fix set of memory maps, and pointer
+ *  to an array of per page info.
+ */
 typedef struct {
 	map_t maps[MAX_MAPS];		/* Mappings */
 	uint32_t nmaps;			/* Number of mappings */
@@ -114,6 +133,10 @@ typedef struct {
 	uint64_t last_addr;		/* Last address */
 } mem_info_t;
 
+/*
+ *  Cursor context, we have one each for the
+ *  memory map and page contents views
+ */
 typedef struct {
 	int32_t xpos;			/* Cursor x position */
 	int32_t ypos;			/* Cursor y position */
@@ -124,7 +147,9 @@ typedef struct {
 	int32_t ymax;			/* Height */
 } position_t;
 
-/* I dislike globals, but it saves passing these around a lot */
+/*
+ *  Globals, stashed in a global struct
+ */
 typedef struct {
 	mem_info_t mem_info;		/* Mapping and page info */
 	uint64_t max_pages;		/* Max pages in system */
