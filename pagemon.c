@@ -66,6 +66,7 @@
 #define ERR_ALLOC_NOMEM		(-4)
 #define ERR_TOO_MANY_PAGES	(-5)
 #define ERR_RESIZE_FAIL		(-6)
+#define ERR_NO_PROCESS		(-7)
 
 #define	PAGE_PTE_SOFT_DIRTY	(1ULL << 55)
 #define	PAGE_EXCLUSIVE_MAPPED	(1ULL << 56)
@@ -126,6 +127,7 @@ typedef struct {
 	mem_info_t mem_info;		/* Mapping and page info */
 	uint64_t max_pages;		/* Max pages in system */
 	uint32_t page_size;		/* Page size in bytes */
+	pid_t pid;			/* Process ID */
 	bool tab_view;			/* Page pop-up info */
 	bool vm_view;			/* Process VM stats */
 	bool help_view;			/* Help pop-up info */
@@ -225,6 +227,8 @@ static int read_maps(void)
 	uint64_t last_addr = 0;
 	map_t *map;
 
+	if (kill(g.pid, 0) < 0)
+		return ERR_NO_PROCESS;
 	memset(&g.mem_info, 0, sizeof(g.mem_info));
 	fp = fopen(g.path_maps, "r");
 	if (fp == NULL)
@@ -786,8 +790,9 @@ int main(int argc, char **argv)
 	int64_t page_index = 0, prev_page_index;
 	int64_t data_index = 0, prev_data_index;
 	int32_t tick = 0, ticks = 60, blink = 0, zoom = 1;
-	pid_t pid = -1;
 	int rc = OK, ret;
+
+	g.pid = -1;
 
 	for (;;) {
 		int c = getopt(argc, argv, "ad:hp:rt:vz:");
@@ -810,8 +815,8 @@ int main(int argc, char **argv)
 			exit(EXIT_SUCCESS);
 			break;
 		case 'p':
-			pid = strtol(optarg, NULL, 10);
-			if (errno || (pid < 0)) {
+			g.pid = strtol(optarg, NULL, 10);
+			if (errno || (g.pid < 0)) {
 				fprintf(stderr, "Invalid pid value\n");
 				exit(EXIT_FAILURE);
 			}
@@ -848,11 +853,11 @@ int main(int argc, char **argv)
 	}
 	if (geteuid() != 0) {
 		fprintf(stderr, "%s requires root privileges to "
-			"access memory of pid %d\n", APP_NAME, pid);
+			"access memory of pid %d\n", APP_NAME, g.pid);
 		exit(EXIT_FAILURE);
 	}
-	if (kill(pid, 0) < 0) {
-		fprintf(stderr, "No such process %d\n", pid);
+	if (kill(g.pid, 0) < 0) {
+		fprintf(stderr, "No such process %d\n", g.pid);
 		exit(EXIT_FAILURE);
 	}
 	g.page_size = sysconf(_SC_PAGESIZE);
@@ -879,17 +884,17 @@ int main(int argc, char **argv)
 	}
 
 	snprintf(g.path_refs, sizeof(g.path_refs),
-		"/proc/%i/clear_refs", pid);
+		"/proc/%i/clear_refs", g.pid);
 	snprintf(g.path_pagemap, sizeof(g.path_pagemap),
-		"/proc/%i/pagemap", pid);
+		"/proc/%i/pagemap", g.pid);
 	snprintf(g.path_maps, sizeof(g.path_maps),
-		"/proc/%i/maps", pid);
+		"/proc/%i/maps", g.pid);
 	snprintf(g.path_mem, sizeof(g.path_mem),
-		"/proc/%i/mem", pid);
+		"/proc/%i/mem", g.pid);
 	snprintf(g.path_status, sizeof(g.path_status),
-		"/proc/%i/status", pid);
+		"/proc/%i/status", g.pid);
 	snprintf(g.path_stat, sizeof(g.path_stat),
-		"/proc/%i/stat", pid);
+		"/proc/%i/stat", g.pid);
 
 	initscr();
 	start_color();
@@ -1348,10 +1353,10 @@ force_ch:
 		ret = EXIT_SUCCESS;
 		break;
 	case ERR_NO_MAP_INFO:
-		fprintf(stderr, "Cannot access memory maps for PID %d\n", pid);
+		fprintf(stderr, "Cannot access memory maps for PID %d\n", g.pid);
 		break;
 	case ERR_NO_MEM_INFO:
-		fprintf(stderr, "Cannot access memory for PID %d\n", pid);
+		fprintf(stderr, "Cannot access memory for PID %d\n", g.pid);
 		break;
 	case ERR_SMALL_WIN:
 		fprintf(stderr, "Window too small\n");
@@ -1366,6 +1371,9 @@ force_ch:
 		break;
 	case ERR_RESIZE_FAIL:
 		fprintf(stderr, "Cannot get window size after a resize event\n");
+		break;
+	case ERR_NO_PROCESS:
+		fprintf(stderr, "Process %d exited\n", g.pid);
 		break;
 	default:
 		fprintf(stderr, "Unknown failure (%d)\n", rc);
