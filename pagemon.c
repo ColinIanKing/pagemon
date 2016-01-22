@@ -35,7 +35,7 @@
 #include <ncurses.h>
 
 #define APP_NAME		"pagemon"
-#define MAX_MMAPS		(65536)
+#define MAX_MAPS		(65536)
 
 #define ADDR_OFFSET		(17)
 #define HEX_WIDTH		(3)
@@ -51,6 +51,8 @@
 
 #define MAXIMUM(a, b)		((a) > (b) ? (a) : (b))
 #define MINIMUM(a, b)		((a) < (b) ? (a) : (b))
+
+#define PROCPATH_MAX		(32)
 
 #define BLINK_MASK		(0x20)
 
@@ -105,7 +107,7 @@ typedef struct {
 } page_t;
 
 typedef struct {
-	map_t maps[MAX_MMAPS];		/* Mappings */
+	map_t maps[MAX_MAPS];		/* Mappings */
 	uint32_t nmaps;			/* Number of mappings */
 	page_t *pages;			/* Pages */
 	uint64_t npages;		/* Number of pages */
@@ -137,12 +139,12 @@ typedef struct {
 	uint8_t view;			/* Default page or memory view */
 	uint8_t opt_flags;		/* User option flags */
 	WINDOW *mainwin;		/* curses main window */
-	char path_refs[PATH_MAX];	/* /proc/$PID/clear_refs */
-	char path_pagemap[PATH_MAX];	/* /proc/$PID/pagemap */
-	char path_maps[PATH_MAX];	/* /proc/$PID/maps */
-	char path_mem[PATH_MAX];	/* /proc/$PID/mem */
-	char path_status[PATH_MAX];	/* /proc/$PID/status */
-	char path_stat[PATH_MAX];	/* /proc/$PID/stat */
+	char path_refs[PROCPATH_MAX];	/* /proc/$PID/clear_refs */
+	char path_pagemap[PROCPATH_MAX];/* /proc/$PID/pagemap */
+	char path_maps[PROCPATH_MAX];	/* /proc/$PID/maps */
+	char path_mem[PROCPATH_MAX];	/* /proc/$PID/mem */
+	char path_status[PROCPATH_MAX];	/* /proc/$PID/status */
+	char path_stat[PROCPATH_MAX];	/* /proc/$PID/stat */
 } global_t;
 
 static global_t g;
@@ -265,7 +267,7 @@ static int read_maps(void)
 
 		g.mem_info.npages += length / g.page_size;
 		n++;
-		if (n >= MAX_MMAPS)
+		if (n >= MAX_MAPS)
 			break;
 	}
 	fclose(fp);
