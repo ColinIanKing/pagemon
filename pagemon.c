@@ -29,6 +29,7 @@
 #include <limits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <ncurses.h>
@@ -64,6 +65,7 @@
 #define ERR_SMALL_WIN		(-3)
 #define ERR_ALLOC_NOMEM		(-4)
 #define ERR_TOO_MANY_PAGES	(-5)
+#define ERR_RESIZE_FAIL		(-6)
 
 #define	PAGE_PTE_SOFT_DIRTY	(1ULL << 55)
 #define	PAGE_EXCLUSIVE_MAPPED	(1ULL << 56)
@@ -399,6 +401,14 @@ static void show_page_bits(
 		(info & PAGE_PRESENT) ? "Yes" : "No ", "");
 }
 
+/*
+ *  banner()
+ *	clear a banner across the window
+ */
+static inline void banner(const int y)
+{
+	mvwprintw(g.mainwin, y, 0, "%*s", COLS, "");
+}
 
 /*
  *  show_pages()
@@ -612,6 +622,7 @@ static int read_all_pages(void)
  */
 static inline void show_key(void)
 {
+	banner(LINES - 1);
 	if (g.view == VIEW_PAGE) {
 		wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
 		mvwprintw(g.mainwin, LINES - 1, 0, "Page View, KEY: ");
@@ -892,20 +903,29 @@ int main(int argc, char **argv)
 		 *  handle window resizing in ugly way
 		 */
 		if (g.resized) {
+			int newx, newy;
 			const int64_t cursor_index = page_index +
 				(p->xpos + (p->ypos * p->xmax));
+			struct winsize ws;
 
-			delwin(g.mainwin);
-			endwin();
-			refresh();
-			clear();
+			if (ioctl(fileno(stdin), TIOCGWINSZ, &ws) < 0) {
+				rc = ERR_RESIZE_FAIL;
+				break;
+			}
+			newy = ws.ws_row;
+			newx = ws.ws_col;
 
 			/* Way too small, give up */
-			if ((COLS < 30) || (LINES < 5)) {
+			if ((COLS < 23) || (LINES < 1)) {
 				rc = ERR_SMALL_WIN;
 				break;
 			}
-			g.mainwin = newwin(LINES, COLS, 0, 0);
+
+			resizeterm(newy, newx);
+			wresize(g.mainwin, newy, newx);
+			wrefresh(g.mainwin);
+			refresh();
+
 			wbkgd(g.mainwin, COLOR_PAIR(RED_BLUE));
 			g.resized = false;
 			p->xpos = 0;
@@ -917,10 +937,11 @@ int main(int argc, char **argv)
 		 *  Window getting too small, tell user
 		 */
 		if ((COLS < 80) || (LINES < 20)) {
+			wclear(g.mainwin);
 			wbkgd(g.mainwin, COLOR_PAIR(RED_BLUE));
 			wattrset(g.mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
-			mvwprintw(g.mainwin, LINES / 2, (COLS / 2) - 10,
-				"[ WINDOW TOO SMALL ]");
+			mvwprintw(g.mainwin, LINES / 2, (COLS / 2) - 8,
+				" WINDOW TOO SMALL ");
 			wrefresh(g.mainwin);
 			refresh();
 			usleep(udelay);
@@ -1001,6 +1022,7 @@ int main(int argc, char **argv)
 			show_help();
 
 		wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		banner(0);
 		if (!map) {
 			mvwprintw(g.mainwin, 0, 0,
 				"Pagemon 0x---------------- %4.4s x %-3d ",
@@ -1278,6 +1300,9 @@ force_ch:
 		fprintf(stderr, "Too many pages in process for %s\n", APP_NAME);
 		printf("%" PRIu64 " vs %" PRIu64 "\n",
 			g.mem_info.npages , g.max_pages);
+		break;
+	case ERR_RESIZE_FAIL:
+		fprintf(stderr, "Cannot get window size after a resize event\n");
 		break;
 	default:
 		fprintf(stderr, "Unknown failure (%d)\n", rc);
