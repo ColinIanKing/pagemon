@@ -1,3 +1,34 @@
+pagemon (0.01.06-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Update man page date
+  * Add some more comments
+  * Re-position pop-up windows a bit more
+  * Add more comments
+  * Rename MAX_MMAPS to MAX_MAPS
+  * Check process is alive before fetching maps
+  * Cleaner termination of windows at end, less flicker and delay
+  * Shunt pop up windows up by 1 row
+  * Add page fault info in VM pop up
+  * Handle resizing in a less flickering way
+  * Make VM information stick to right hand side of window
+  * Get zoom scaling correct for small applications
+  * Add another const on static data structure
+  * Cleanly shutdown on SIGSEGV and SIGBUS
+  * More clean ups and constifications
+  * Some very minor code clean ups
+  * Pass xmax, ymax using position_t ptr
+  * Replace LINES with p->ymax
+  * Add [ ] keys to set zoom mode to min/max
+  * Move window resizing so it happens just before a new redraw
+  * Minor rework of read_maps to save a few cycles
+  * Optimize the page hotspot with large maps, also saves a division
+  * Add -v option
+  * Don't poll on reading pages so frequently
+  * Fix segfault when memory shrinks and cursor falls off end of memory
+
+ -- Colin King <colin.king@canonical.com>  Fri, 22 Jan 2016 23:22:35 +0000
+
 pagemon (0.01.05-1) unstable; urgency=medium
 
   * Makefile: bump version
