@@ -515,28 +515,42 @@ static int show_pages(
 	const int32_t zoom)
 {
 	int32_t i;
-	uint64_t index = page_index;
+	uint64_t index;
 	const uint32_t shift = ((uint32_t)(8 * sizeof(uint64_t) - 4 -
 		__builtin_clzll((g.page_size))));
 	int fd;
-	map_t *map = g.mem_info.pages[cursor_index].map;
+	map_t *map;
 	const int32_t xmax = p->xmax, ymax = p->ymax;
+	uint64_t info_buf[xmax];
 
 	if ((fd = open(g.path_pagemap, O_RDONLY)) < 0)
 		return ERR_NO_MAP_INFO;
 
+	index = page_index;
 	for (i = 1; i <= ymax; i++) {
-		uint64_t info;
 		int32_t j;
+		map_t *map;
+		uint64_t addr, offset;
 
 		if (index >= g.mem_info.npages) {
 			wattrset(g.mainwin, COLOR_PAIR(BLACK_BLACK));
 			mvwprintw(g.mainwin, i, 0, "---------------- ");
 		} else {
-			uint64_t addr = g.mem_info.pages[index].addr;
+			addr = g.mem_info.pages[index].addr;
 			wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
 			mvwprintw(g.mainwin, i, 0, "%16.16" PRIx64 " ", addr);
 		}
+
+		/*
+		 *  Slurp up an entire row
+		 */
+		addr = g.mem_info.pages[index].addr;
+		map = g.mem_info.pages[index].map;
+		offset = (addr >> shift) & ~7;
+		if (lseek(fd, offset, SEEK_SET) == (off_t)-1)
+			break;
+		if (read(fd, info_buf, xmax * sizeof(uint64_t)) < 0)
+			break;
 
 		for (j = 0; j < xmax; j++) {
 			char state = '.';
@@ -546,21 +560,29 @@ static int show_pages(
 				attr = COLOR_PAIR(BLACK_BLACK);
 				state = '~';
 			} else {
-				uint64_t addr;
 				off_t offset;
+				map_t *new_map;
+				register uint64_t info;
 
 				addr = g.mem_info.pages[index].addr;
+				new_map = g.mem_info.pages[index].map;
+				/*
+				 *  On a different mapping? If so, slurp up
+				 *  the new mappings from here to end
+				 */
+				if (new_map != map) {
+					map = new_map;
+					addr = g.mem_info.pages[index].addr;
+					offset = (addr >> shift) & ~7;
+					if (lseek(fd, offset, SEEK_SET) == (off_t)-1)
+						break;
+					if (read(fd, &info_buf[j], (xmax - j) * sizeof(uint64_t)) < 0)
+						break;
+				}
 
-				/* offset = sizeof(uint64_t) * (addr / g.page_size); */
-				offset = (addr >> shift) & ~7;
+				__builtin_prefetch(&g.mem_info.pages[index + zoom].addr, 1, 1);
 
-				if (lseek(fd, offset, SEEK_SET) == (off_t)-1)
-					break;
-				if (read(fd, &info, sizeof(info)) < 0)
-					break;
-
-				 __builtin_prefetch(&g.mem_info.pages[index + zoom].addr, 1, 1);
-
+				info = info_buf[j];
 				attr = COLOR_PAIR(BLACK_WHITE);
 				if (info & PAGE_PRESENT) {
 					attr = COLOR_PAIR(WHITE_YELLOW);
@@ -586,6 +608,7 @@ static int show_pages(
 	}
 	wattrset(g.mainwin, A_NORMAL);
 
+	map = g.mem_info.pages[cursor_index].map;
 	if (map && g.tab_view)
 		show_page_bits(fd, map, cursor_index);
 	if (g.vm_view)
