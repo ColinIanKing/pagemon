@@ -154,10 +154,11 @@ typedef struct {
  *  Globals, stashed in a global struct
  */
 typedef struct {
-	mem_info_t mem_info;		/* Mapping and page info */
+	WINDOW *mainwin;		/* curses main window */
 	uint64_t max_pages;		/* Max pages in system */
 	uint32_t page_size;		/* Page size in bytes */
 	pid_t pid;			/* Process ID */
+	mem_info_t mem_info;		/* Mapping and page info */
 	bool tab_view;			/* Page pop-up info */
 	bool vm_view;			/* Process VM stats */
 	bool help_view;			/* Help pop-up info */
@@ -166,7 +167,6 @@ typedef struct {
 	bool auto_zoom;			/* Automatic zoom */
 	uint8_t view;			/* Default page or memory view */
 	uint8_t opt_flags;		/* User option flags */
-	WINDOW *mainwin;		/* curses main window */
 	char path_refs[PROCPATH_MAX];	/* /proc/$PID/clear_refs */
 	char path_pagemap[PROCPATH_MAX];/* /proc/$PID/pagemap */
 	char path_maps[PROCPATH_MAX];	/* /proc/$PID/maps */
