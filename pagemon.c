@@ -203,6 +203,11 @@ static void mem_to_str(const uint64_t val, char *buf, const size_t buflen)
 	snprintf(buf, buflen, "%7" PRIu64 " %c", scaled, unit);
 }
 
+/*
+ *  read_buf()
+ *	read data into a buffer, just
+ *	for one liner /proc file reading
+ */
 static int read_buf(
 	const char *path,
 	char *buffer,
