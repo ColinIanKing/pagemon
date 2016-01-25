@@ -173,6 +173,7 @@ typedef struct {
 	char path_mem[PROCPATH_MAX];	/* /proc/$PID/mem */
 	char path_status[PROCPATH_MAX];	/* /proc/$PID/status */
 	char path_stat[PROCPATH_MAX];	/* /proc/$PID/stat */
+	char path_oom[PROCPATH_MAX];	/* /proc/$PID/oom_score */
 } global_t;
 
 static global_t g;
@@ -202,6 +203,25 @@ static void mem_to_str(const uint64_t val, char *buf, const size_t buflen)
 	snprintf(buf, buflen, "%7" PRIu64 " %c", scaled, unit);
 }
 
+static int read_buf(
+	const char *path,
+	char *buffer,
+	const size_t sz)
+{
+	int fd;
+	ssize_t ret;
+
+	if ((fd = open(path, O_RDONLY)) < 0)
+		return -1;
+	ret = read(fd, buffer, sz);
+	(void)close(fd);
+
+	if ((ret < 1) || (ret > (ssize_t)sz))
+		return -1;
+	buffer[ret - 1] = '\0';
+	return 0;
+}
+
 /*
  *  read_faults()
  *	read minor and major page faults
@@ -210,22 +230,14 @@ static int read_faults(
 	uint64_t *minor_flt,
 	uint64_t *major_flt)
 {
-	int fd;
 	int count = 0;
-	ssize_t sz;
 	char buf[4096], *ptr = buf;
 
 	*minor_flt = 0;
 	*major_flt = 0;
 
-	if ((fd = open(g.path_stat, O_RDONLY)) < 0)
+	if (read_buf(g.path_stat, buf, sizeof(buf)) < 0)
 		return -1;
-	sz = read(fd, buf, sizeof(buf));
-	(void)close(fd);
-
-	if ((sz < 1) || (sz > (ssize_t)sizeof(buf)))
-		return -1;
-	buf[sz - 1] = '\0';
 
 	/*
 	 * Skipping over fields is less expensive
@@ -242,9 +254,26 @@ static int read_faults(
 	if (!*ptr)
 		return -1;
 
-	sscanf(ptr, "%" SCNu64 " %*u %" SCNu64,
-		minor_flt, major_flt);
+	if (sscanf(ptr, "%" SCNu64 " %*u %" SCNu64, minor_flt, major_flt) != 2)
+		return -1;
+	return 0;
+}
 
+/*
+ *  read_oom_score()
+ *	read the process oom score
+ */
+static int read_oom_score(uint64_t *score)
+{
+	char buf[4096];
+
+	*score = ~0ULL;
+
+	if (read_buf(g.path_oom, buf, sizeof(buf)) < 0)
+		return -1;
+
+	if (sscanf(buf, "%" SCNu64, score) != 1)
+		return -1;
 	return 0;
 }
 
@@ -397,7 +426,7 @@ static void show_vm(void)
 	char buffer[4096];
 	int y = 2;
 	const int x = COLS - 26;
-	uint64_t major, minor;
+	uint64_t major, minor, score;
 
 	fp = fopen(g.path_status, "r");
 	if (fp == NULL)
@@ -425,15 +454,19 @@ static void show_vm(void)
 	}
 	fclose(fp);
 
-	if (read_faults(&minor, &major) < 0)
-		return;
+	if (!read_faults(&minor, &major)) {
+		mvwprintw(g.mainwin, y, x, " %-23s", "Page Faults:");
+		y++;
+		mvwprintw(g.mainwin, y, x, " Minor: %12" PRIu64 "    ", minor);
+		y++;
+		mvwprintw(g.mainwin, y, x, " Major: %12" PRIu64 "    ", major);
+		y++;
+	}
 
-	mvwprintw(g.mainwin, y, x, " %-23s", "Page Faults:");
-	y++;
-	mvwprintw(g.mainwin, y, x, " Minor: %12" PRIu64 "    ", minor);
-	y++;
-	mvwprintw(g.mainwin, y, x, " Major: %12" PRIu64 "    ", major);
-	y++;
+	if (!read_oom_score(&score)) {
+		mvwprintw(g.mainwin, y, x, " OOM Score: %8" PRIu64 "    ", score);
+		y++;
+	}
 }
 
 /*
@@ -970,6 +1003,8 @@ int main(int argc, char **argv)
 		"/proc/%i/status", g.pid);
 	snprintf(g.path_stat, sizeof(g.path_stat),
 		"/proc/%i/stat", g.pid);
+	snprintf(g.path_oom, sizeof(g.path_stat),
+		"/proc/%i/oom_score", g.pid);
 
 	initscr();
 	start_color();
