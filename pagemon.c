@@ -297,6 +297,8 @@ static int read_maps(void)
 	uint64_t prev_checksum = ~0ULL;
 	map_t *map;
 
+	g.mem_info.npages = 0;
+
 	if (kill(g.pid, 0) < 0)
 		return ERR_NO_PROCESS;
 	memset(&g.mem_info, 0, sizeof(g.mem_info));
@@ -351,20 +353,23 @@ static int read_maps(void)
 
 	if (checksum == prev_checksum)
 		return n;
-
 	prev_checksum = checksum;
 
 	/* Unlikely, but need to keep Coverity Scan happy */
 	if (g.mem_info.npages > g.max_pages)
 		return ERR_TOO_MANY_PAGES;
 
+	free(g.mem_info.pages);
 	g.mem_info.nmaps = n;
-	g.mem_info.pages = page = calloc(g.mem_info.npages, sizeof(page_t));
-	if (!g.mem_info.pages)
+	g.mem_info.pages = calloc(g.mem_info.npages, sizeof(page_t));
+	if (!g.mem_info.pages) {
+		g.mem_info.nmaps = 0;
 		return ERR_ALLOC_NOMEM;
+	}
 
 	g.mem_info.last_addr = last_addr;
 	map = g.mem_info.maps;
+	page = g.mem_info.pages;
 	for (i = 0; i < g.mem_info.nmaps; i++, map++) {
 		uint64_t addr = map->begin;
 		uint64_t count = (map->end - map->begin) / g.page_size;
@@ -1043,8 +1048,6 @@ int main(int argc, char **argv)
 		float percent;
 
 		if ((!tick) && (g.view == VIEW_PAGE)) {
-			free(g.mem_info.pages);
-			g.mem_info.npages = 0;
 			if ((rc = read_maps()) < 0)
 				break;
 		}
@@ -1461,6 +1464,8 @@ force_ch:
 	refresh();
 	clear();
 	endwin();
+
+	free(g.mem_info.pages);
 
 	ret = EXIT_FAILURE;
 	switch (rc) {
