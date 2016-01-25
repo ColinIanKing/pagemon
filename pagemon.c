@@ -846,34 +846,38 @@ static inline void show_key(void)
 static inline void show_help(void)
 {
 	const int x = (COLS - 45) / 2;
-	const int y = (LINES - 10) / 2;
+	const int y = (LINES - 15) / 2;
 
 	wattrset(g.mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
 	mvwprintw(g.mainwin, y + 0,  x,
-		" HELP (press ? or h to toggle on/off)%6s", "");
+		" Pagemon Process Memory Monitor Quick Help ");
 	mvwprintw(g.mainwin, y + 1,  x,
 		"%43s", "");
 	mvwprintw(g.mainwin, y + 2,  x,
-		" Esc or q   quit%27s", "");
+		" ? or h     This help information%10s", "");
 	mvwprintw(g.mainwin, y + 3,  x,
-		" Tab        Toggle page information%8s", "");
+		" Esc or q   Quit%27s", "");
 	mvwprintw(g.mainwin, y + 4,  x,
-		" Enter      Toggle map/memory views%8s", "");
+		" Tab        Toggle page information%8s", "");
 	mvwprintw(g.mainwin, y + 5,  x,
-		" + or z     Zoom in memory map%13s", "");
+		" Enter      Toggle map/memory views%8s", "");
 	mvwprintw(g.mainwin, y + 6,  x,
-		" - or Z     Zoom out memory map%12s", "");
+		" + or z     Zoom in memory map%13s", "");
 	mvwprintw(g.mainwin, y + 7,  x,
-		" R or r     Read pages (swap in all pages) ");
+		" - or Z     Zoom out memory map%12s", "");
 	mvwprintw(g.mainwin, y + 8,  x,
-		" V or v     Toggle Virtual Memory Stats    ");
+		" R or r     Read pages (swap in all pages) ");
 	mvwprintw(g.mainwin, y + 9,  x,
-		" PgUp       Scroll up 1/2 page%13s", "");
+		" A or a     Toggle Auto Zoom on/off        ");
 	mvwprintw(g.mainwin, y + 10,  x,
-		" PgDown     Scroll Down1/2 page%12s", "");
-	mvwprintw(g.mainwin, y + 11, x,
-		" Home       Move cursor back to top%8s", "");
+		" V or v     Toggle Virtual Memory Stats    ");
+	mvwprintw(g.mainwin, y + 11,  x,
+		" PgUp/Down  Scroll up/down 1/2 page%8s", "");
 	mvwprintw(g.mainwin, y + 12, x,
+		" Home/End   Move cursor back to top/bottom ");
+	mvwprintw(g.mainwin, y + 13, x,
+		" [ / ]      Zoom 1 / Zoom 999              ");
+	mvwprintw(g.mainwin, y + 14, x,
 		" Cursor keys move Up/Down/Left/Right%7s", "");
 }
 
