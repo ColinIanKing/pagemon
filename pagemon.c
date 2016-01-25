@@ -259,6 +259,8 @@ static int read_maps(void)
 	char buffer[4096];
 	page_t *page;
 	uint64_t last_addr = 0;
+	uint64_t checksum = 0;
+	uint64_t prev_checksum = ~0ULL;
 	map_t *map;
 
 	if (kill(g.pid, 0) < 0)
@@ -268,41 +270,55 @@ static int read_maps(void)
 	if (fp == NULL)
 		return ERR_NO_MAP_INFO;
 
+	map = g.mem_info.maps;
 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
 		int ret;
 		int64_t length;
 
-		g.mem_info.maps[n].name[0] = '\0';
+		map->name[0] = '\0';
 		ret = sscanf(buffer, "%" SCNx64 "-%" SCNx64
 			" %5s %*s %6s %*d %s",
-			&g.mem_info.maps[n].begin,
-			&g.mem_info.maps[n].end,
-			g.mem_info.maps[n].attr,
-			g.mem_info.maps[n].dev,
-			g.mem_info.maps[n].name);
+			&map->begin,
+			&map->end,
+			map->attr,
+			map->dev,
+			map->name);
 		if ((ret != 5) && (ret != 4))
 			continue;
 		if (ret == 4)
-			g.mem_info.maps[n].name[0]= '\0';
+			map->name[0]= '\0';
 
 		/* Simple sanity check */
-		if (g.mem_info.maps[n].end < g.mem_info.maps[n].begin)
+		if (map->end < map->begin)
 			continue;
 
-		length = g.mem_info.maps[n].end - g.mem_info.maps[n].begin;
+		length = map->end - map->begin;
 		/* Check for overflow */
 		if (g.mem_info.npages + length < g.mem_info.npages)
 			continue;
 
-		if (last_addr < g.mem_info.maps[n].end)
-			last_addr = g.mem_info.maps[n].end;
+		if (last_addr < map->end)
+			last_addr = map->end;
+
+		checksum ^= map->begin;
+		checksum ^= map->end;
+		checksum ^= map->attr[0];
+		checksum ^= map->attr[1];
+		checksum ^= map->attr[2];
+		checksum ^= map->attr[3];
 
 		g.mem_info.npages += length / g.page_size;
 		n++;
+		map++;
 		if (n >= MAX_MAPS)
 			break;
 	}
 	fclose(fp);
+
+	if (checksum == prev_checksum)
+		return n;
+
+	prev_checksum = checksum;
 
 	/* Unlikely, but need to keep Coverity Scan happy */
 	if (g.mem_info.npages > g.max_pages)
