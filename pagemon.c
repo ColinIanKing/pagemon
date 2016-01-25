@@ -102,9 +102,14 @@ enum {
 	BLUE_WHITE,
 };
 
-typedef int64_t index_t;
-typedef uint64_t pagemap_t;
-typedef uint64_t addr_t;
+/* 
+ *  Note that we use 64 bit addresses even for 32 bit systems since
+ *  this allows pagemon to run in a 32 bit chroot and still access
+ *  the 64 bit mapping info.  Otherwise I'd use uintptr_t instead.
+ */
+typedef uint64_t addr_t;		/* Addresses */
+typedef int64_t index_t;		/* Index into page tables */
+typedef uint64_t pagemap_t;		/* PTE page map bits */
 
 /*
  *  Memory map info, represents 1 or more pages
