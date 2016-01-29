@@ -34,6 +34,8 @@
 #include <signal.h>
 #include <ncurses.h>
 
+#include "perf.h"
+
 #define APP_NAME		"pagemon"
 #define MAX_MAPS		(65536)
 
@@ -69,12 +71,13 @@
  */
 #define OK			(0)
 #define ERR_NO_MAP_INFO		(-1)
-#define ERR_NO_MEM_INFO		(-2)	
+#define ERR_NO_MEM_INFO		(-2)
 #define ERR_SMALL_WIN		(-3)
 #define ERR_ALLOC_NOMEM		(-4)
 #define ERR_TOO_MANY_PAGES	(-5)
-#define ERR_RESIZE_FAIL		(-6)
-#define ERR_NO_PROCESS		(-7)
+#define ERR_TOO_FEW_PAGES	(-6)
+#define ERR_RESIZE_FAIL		(-7)
+#define ERR_NO_PROCESS		(-8)
 
 /*
  *  PTE bits from uint64_t in /proc/PID/pagemap
@@ -102,7 +105,7 @@ enum {
 	BLUE_WHITE,
 };
 
-/* 
+/*
  *  Note that we use 64 bit addresses even for 32 bit systems since
  *  this allows pagemon to run in a 32 bit chroot and still access
  *  the 64 bit mapping info.  Otherwise I'd use uintptr_t instead.
@@ -168,12 +171,18 @@ typedef struct {
 	uint32_t page_size;		/* Page size in bytes */
 	pid_t pid;			/* Process ID */
 	mem_info_t mem_info;		/* Mapping and page info */
+#if defined(PERF_ENABLED)
+	perf_t perf;			/* Perf context */
+#endif
 	bool tab_view;			/* Page pop-up info */
 	bool vm_view;			/* Process VM stats */
 	bool help_view;			/* Help pop-up info */
 	bool resized;			/* SIGWINCH occurred */
 	bool terminate;			/* SIGSEGV termination */
 	bool auto_zoom;			/* Automatic zoom */
+#if defined(PERF_ENABLED)
+	bool perf_view;			/* Perf statistics */
+#endif
 	uint8_t view;			/* Default page or memory view */
 	uint8_t opt_flags;		/* User option flags */
 	char path_refs[PROCPATH_MAX];	/* /proc/$PID/clear_refs */
@@ -307,10 +316,14 @@ static int read_maps(void)
 	map_t *map;
 
 	g.mem_info.npages = 0;
+	g.mem_info.nmaps = 0;
+	g.mem_info.npages = 0;
+	g.mem_info.last_addr = 0;
+	memset(&g.mem_info.maps, 0, sizeof(g.mem_info.maps));
 
 	if (kill(g.pid, 0) < 0)
 		return ERR_NO_PROCESS;
-	memset(&g.mem_info, 0, sizeof(g.mem_info));
+
 	fp = fopen(g.path_maps, "r");
 	if (fp == NULL)
 		return ERR_NO_MAP_INFO;
@@ -367,6 +380,8 @@ static int read_maps(void)
 	/* Unlikely, but need to keep Coverity Scan happy */
 	if (g.mem_info.npages > g.max_pages)
 		return ERR_TOO_MANY_PAGES;
+	if (g.mem_info.npages == 0)
+		return ERR_TOO_FEW_PAGES;
 
 	free(g.mem_info.pages);
 	g.mem_info.nmaps = n;
@@ -435,6 +450,36 @@ static void show_usage(void)
 		DEFAULT_UDELAY);
 }
 
+#if defined(PERF_ENABLED)
+/*
+ *  show_perf()
+ *	show perf stats
+ */
+static void show_perf(void)
+{
+	int y = LINES - 6;
+	const int x = 2;
+	static uint8_t perf_ticker = 0;
+
+	/* Don't hammer perf to death */
+	if (++perf_ticker > 10) {
+		perf_stop(&g.perf);
+		perf_start(&g.perf, g.pid);
+		perf_ticker = 0;
+	}
+	wattrset(g.mainwin, COLOR_PAIR(WHITE_CYAN) | A_BOLD);
+	mvwprintw(g.mainwin, y + 0, x, " Page Faults (User Space):   %15" PRIu64 " ",
+		perf_counter(&g.perf, PERF_TP_PAGE_FAULT_USER));
+	mvwprintw(g.mainwin, y + 1, x, " Page Faults (Kernel Space): %15" PRIu64 " ",
+		perf_counter(&g.perf, PERF_TP_PAGE_FAULT_KERNEL));
+	mvwprintw(g.mainwin, y + 2, x, " Kernel Page Allocate:       %15" PRIu64 " ",
+		perf_counter(&g.perf, PERF_TP_MM_PAGE_ALLOC));
+	mvwprintw(g.mainwin, y + 3, x, " Kernel Page Free:           %15" PRIu64 " ",
+		perf_counter(&g.perf, PERF_TP_MM_PAGE_FREE));
+
+}
+#endif
+
 /*
  *  show_vm()
  *	show Virtual Memory stats
@@ -458,33 +503,27 @@ static void show_vm(void)
 		uint64_t sz;
 
 		if (sscanf(buffer, "State: %5s %12s", state, longstate) == 2) {
-			mvwprintw(g.mainwin, y, x, " State:    %-12.12s ",
+			mvwprintw(g.mainwin, y++, x, " State:    %-12.12s ",
 				longstate);
-			y++;
 			continue;
 		}
 		if (sscanf(buffer, "Vm%8s %" SCNu64 "%7s",
 		    vmname, &sz, size) == 3) {
-			mvwprintw(g.mainwin, y, x, " Vm%-6.6s %10" PRIu64 " %s ",
+			mvwprintw(g.mainwin, y++, x, " Vm%-6.6s %10" PRIu64 " %s ",
 				vmname, sz, size);
-			y++;
 			continue;
 		}
 	}
 	fclose(fp);
 
 	if (!read_faults(&minor, &major)) {
-		mvwprintw(g.mainwin, y, x, " %-23s", "Page Faults:");
-		y++;
-		mvwprintw(g.mainwin, y, x, " Minor: %12" PRIu64 "    ", minor);
-		y++;
-		mvwprintw(g.mainwin, y, x, " Major: %12" PRIu64 "    ", major);
-		y++;
+		mvwprintw(g.mainwin, y++, x, " %-23s", "Page Faults:");
+		mvwprintw(g.mainwin, y++, x, " Minor: %12" PRIu64 "    ", minor);
+		mvwprintw(g.mainwin, y++, x, " Major: %12" PRIu64 "    ", major);
 	}
 
 	if (!read_oom_score(&score)) {
-		mvwprintw(g.mainwin, y, x, " OOM Score: %8" PRIu64 "    ", score);
-		y++;
+		mvwprintw(g.mainwin, y++, x, " OOM Score: %8" PRIu64 "    ", score);
 	}
 }
 
@@ -681,6 +720,10 @@ static int show_pages(
 		show_page_bits(fd, map, cursor_index);
 	if (g.vm_view)
 		show_vm();
+#if defined(PERF_ENABLED)
+	if (g.perf_view)
+		show_perf();
+#endif
 
 	(void)close(fd);
 	return 0;
@@ -846,38 +889,42 @@ static inline void show_key(void)
 static inline void show_help(void)
 {
 	const int x = (COLS - 45) / 2;
-	const int y = (LINES - 15) / 2;
+	int y = (LINES - 15) / 2;
 
 	wattrset(g.mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
-	mvwprintw(g.mainwin, y + 0,  x,
+	mvwprintw(g.mainwin, y++,  x,
 		" Pagemon Process Memory Monitor Quick Help ");
-	mvwprintw(g.mainwin, y + 1,  x,
+	mvwprintw(g.mainwin, y++,  x,
 		"%43s", "");
-	mvwprintw(g.mainwin, y + 2,  x,
+	mvwprintw(g.mainwin, y++,  x,
 		" ? or h     This help information%10s", "");
-	mvwprintw(g.mainwin, y + 3,  x,
+	mvwprintw(g.mainwin, y++,  x,
 		" Esc or q   Quit%27s", "");
-	mvwprintw(g.mainwin, y + 4,  x,
+	mvwprintw(g.mainwin, y++,  x,
 		" Tab        Toggle page information%8s", "");
-	mvwprintw(g.mainwin, y + 5,  x,
+	mvwprintw(g.mainwin, y++,  x,
 		" Enter      Toggle map/memory views%8s", "");
-	mvwprintw(g.mainwin, y + 6,  x,
+	mvwprintw(g.mainwin, y++,  x,
 		" + or z     Zoom in memory map%13s", "");
-	mvwprintw(g.mainwin, y + 7,  x,
+	mvwprintw(g.mainwin, y++,  x,
 		" - or Z     Zoom out memory map%12s", "");
-	mvwprintw(g.mainwin, y + 8,  x,
+	mvwprintw(g.mainwin, y++,  x,
 		" R or r     Read pages (swap in all pages) ");
-	mvwprintw(g.mainwin, y + 9,  x,
+	mvwprintw(g.mainwin, y++,  x,
 		" A or a     Toggle Auto Zoom on/off        ");
-	mvwprintw(g.mainwin, y + 10,  x,
+	mvwprintw(g.mainwin, y++,  x,
 		" V or v     Toggle Virtual Memory Stats    ");
-	mvwprintw(g.mainwin, y + 11,  x,
+#if defined(PERF_ENABLED)
+	mvwprintw(g.mainwin, y++,  x,
+		" P or p     Toggle Perf Page Stats         ");
+#endif
+	mvwprintw(g.mainwin, y++,  x,
 		" PgUp/Down  Scroll up/down 1/2 page%8s", "");
-	mvwprintw(g.mainwin, y + 12, x,
+	mvwprintw(g.mainwin, y++, x,
 		" Home/End   Move cursor back to top/bottom ");
-	mvwprintw(g.mainwin, y + 13, x,
+	mvwprintw(g.mainwin, y, x,
 		" [ / ]      Zoom 1 / Zoom 999              ");
-	mvwprintw(g.mainwin, y + 14, x,
+	mvwprintw(g.mainwin, y, x,
 		" Cursor keys move Up/Down/Left/Right%7s", "");
 }
 
@@ -1054,6 +1101,10 @@ int main(int argc, char **argv)
 	update_xymax(position, 0);
 	update_xymax(position, 1);
 
+#if defined(PERF_ENABLED)
+	perf_start(&g.perf, g.pid);
+#endif
+
 	for (;;) {
 		int ch, blink_attrs;
 		char cursor_ch;
@@ -1129,7 +1180,7 @@ int main(int argc, char **argv)
 		/*
 		 *  Window getting too small, tell user
 		 */
-		if ((COLS < 80) || (LINES < 21)) {
+		if ((COLS < 80) || (LINES < 23)) {
 			wclear(g.mainwin);
 			wbkgd(g.mainwin, COLOR_PAIR(RED_BLUE));
 			wattrset(g.mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
@@ -1250,6 +1301,13 @@ force_ch:
 			/* Quit */
 			g.terminate = true;
 			break;
+#if defined(PERF_ENABLED)
+		case 'p':
+		case 'P':
+			/* Toggle perf stats */
+			g.perf_view = !g.perf_view;
+			break;
+#endif
 		case '\t':
 			/* Toggle Tab view */
 			g.tab_view = !g.tab_view;
@@ -1479,6 +1537,9 @@ force_ch:
 	clear();
 	endwin();
 
+#if defined(PERF_ENABLED)
+	perf_stop(&g.perf);
+#endif
 	free(g.mem_info.pages);
 
 	ret = EXIT_FAILURE;
@@ -1502,6 +1563,9 @@ force_ch:
 		fprintf(stderr, "Too many pages in process for %s\n", APP_NAME);
 		printf("%" PRIu64 " vs %" PRIu64 "\n",
 			g.mem_info.npages , g.max_pages);
+		break;
+	case ERR_TOO_FEW_PAGES:
+		fprintf(stderr, "Too few pages in process for %s\n", APP_NAME);
 		break;
 	case ERR_RESIZE_FAIL:
 		fprintf(stderr, "Cannot get window size after a resize event\n");

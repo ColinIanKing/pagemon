@@ -26,11 +26,14 @@ LDFLAGS += -lncurses
 BINDIR=/usr/sbin
 MANDIR=/usr/share/man/man8
 
+SRC = pagemon.c perf.c
+OBJS = $(SRC:.c=.o)
 
-pagemon: pagemon.o Makefile
-	$(CC) $(CPPFLAGS) $(CFLAGS)  $< -o $@ $(LDFLAGS)
+pagemon: $(OBJS) Makefile
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(OBJS) -o $@ $(LDFLAGS)
 
-pagemon.o: pagemon.c Makefile
+pagemon.o: pagemon.c perf.h Makefile
+perf.o: perf.c perf.h Makefile
 
 pagemon.8.gz: pagemon.8
 	gzip -c $< > $@
