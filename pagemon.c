@@ -304,25 +304,23 @@ static int read_oom_score(uint64_t *score)
  *  read_maps()
  *	read memory maps for a specifc process
  */
-static int read_maps(void)
+static int read_maps(const bool force)
 {
 	FILE *fp;
 	uint32_t i, j, n = 0;
 	char buffer[4096];
 	page_t *page;
-	addr_t last_addr = 0;
 	uint64_t checksum = 0;
-	uint64_t prev_checksum = ~0ULL;
+	static uint64_t prev_checksum = 0ULL;
 	map_t *map;
 
 	g.mem_info.npages = 0;
-	g.mem_info.nmaps = 0;
-	g.mem_info.npages = 0;
 	g.mem_info.last_addr = 0;
-	memset(&g.mem_info.maps, 0, sizeof(g.mem_info.maps));
 
 	if (kill(g.pid, 0) < 0)
 		return ERR_NO_PROCESS;
+	if (force)
+		prev_checksum = 0;
 
 	fp = fopen(g.path_maps, "r");
 	if (fp == NULL)
@@ -355,8 +353,8 @@ static int read_maps(void)
 		if (g.mem_info.npages + length < g.mem_info.npages)
 			continue;
 
-		if (last_addr < map->end)
-			last_addr = map->end;
+		if (g.mem_info.last_addr < map->end)
+			g.mem_info.last_addr = map->end;
 
 		checksum ^= map->begin;
 		checksum ^= map->end;
@@ -364,6 +362,7 @@ static int read_maps(void)
 		checksum ^= map->attr[1];
 		checksum ^= map->attr[2];
 		checksum ^= map->attr[3];
+		checksum ^= length;
 
 		g.mem_info.npages += length / g.page_size;
 		n++;
@@ -391,7 +390,7 @@ static int read_maps(void)
 		return ERR_ALLOC_NOMEM;
 	}
 
-	g.mem_info.last_addr = last_addr;
+	//memset(&g.mem_info.maps, 0, sizeof(g.mem_info.maps));
 	map = g.mem_info.maps;
 	page = g.mem_info.pages;
 	for (i = 0; i < g.mem_info.nmaps; i++, map++) {
@@ -1113,7 +1112,7 @@ int main(int argc, char **argv)
 		float percent;
 
 		if ((!tick) && (g.view == VIEW_PAGE)) {
-			if ((rc = read_maps()) < 0)
+			if ((rc = read_maps(false)) < 0)
 				break;
 		}
 		if ((g.view == VIEW_PAGE) && g.auto_zoom) {
