@@ -397,7 +397,6 @@ static int read_maps(const bool force)
 		return ERR_ALLOC_NOMEM;
 	}
 
-	//memset(&g.mem_info.maps, 0, sizeof(g.mem_info.maps));
 	map = g.mem_info.maps;
 	page = g.mem_info.pages;
 	for (i = 0; i < g.mem_info.nmaps; i++, map++) {
