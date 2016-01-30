@@ -1206,7 +1206,7 @@ int main(int argc, char **argv)
 			int32_t curxpos = (p->xpos * 3) + ADDR_OFFSET;
 			const position_t *pc = &position[VIEW_PAGE];
 			const index_t cursor_index = page_index +
-				(pc->xpos + (pc->ypos * pc->xmax));
+				zoom * (pc->xpos + (pc->ypos * pc->xmax));
 			percent = (g.mem_info.npages > 0) ?
 				100.0 * cursor_index / g.mem_info.npages : 100;
 
