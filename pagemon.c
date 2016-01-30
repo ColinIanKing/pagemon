@@ -357,11 +357,17 @@ static int read_maps(const bool force)
 			g.mem_info.last_addr = map->end;
 
 		checksum ^= map->begin;
+		checksum <<= 1;
 		checksum ^= map->end;
+		checksum <<= 1;
 		checksum ^= map->attr[0];
+		checksum <<= 1;
 		checksum ^= map->attr[1];
+		checksum <<= 1;
 		checksum ^= map->attr[2];
+		checksum <<= 1;
 		checksum ^= map->attr[3];
+		checksum <<= 1;
 		checksum ^= length;
 
 		g.mem_info.npages += length / g.page_size;
@@ -372,8 +378,9 @@ static int read_maps(const bool force)
 	}
 	fclose(fp);
 
+	/* No change in maps, so nothing to do */
 	if (checksum == prev_checksum)
-		return n;
+		return OK;
 	prev_checksum = checksum;
 
 	/* Unlikely, but need to keep Coverity Scan happy */
