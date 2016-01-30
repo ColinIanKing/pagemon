@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/syscall.h>
 
@@ -60,6 +61,18 @@ typedef struct {
 	int id;				/* stress-ng perf ID */
 	char *path;			/* path to config value */
 } perf_tp_info_t;
+
+/* perf data */
+typedef struct {
+	uint64_t counter;		/* perf counter */
+	uint64_t time_enabled;		/* perf time enabled */
+	uint64_t time_running;		/* perf time running */
+} perf_data_t;
+
+static inline void perf_init(perf_t *p)
+{
+        memset(p, 0, sizeof(perf_t));
+}
 
 extern int perf_start(perf_t *p, const pid_t pid);
 extern int perf_stop(perf_t *p);

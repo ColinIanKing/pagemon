@@ -44,13 +44,15 @@ static perf_tp_info_t perf_tp_info[] = {
 
 };
 
-static unsigned long perf_type_tracepoint_resolve_config(const char *path)
+static inline unsigned long
+perf_type_tracepoint_resolve_config(const char *path)
 {
 	char perf_path[PATH_MAX];
 	unsigned long config;
 	FILE *fp;
 
-	snprintf(perf_path, sizeof(perf_path), "/sys/kernel/debug/tracing/events/%s/id", path);
+	snprintf(perf_path, sizeof(perf_path),
+		"/sys/kernel/debug/tracing/events/%s/id", path);
 	if ((fp = fopen(perf_path, "r")) == NULL)
 		return UNRESOLVED;
 	if (fscanf(fp, "%lu", &config) != 1) {
@@ -62,18 +64,12 @@ static unsigned long perf_type_tracepoint_resolve_config(const char *path)
 	return config;
 }
 
-void perf_init(perf_t *p)
-{
-	memset(p, 0, sizeof(perf_t));
-}
-
 int perf_start(perf_t *p, const pid_t pid)
 {
 	int i;
 
 	if (pid <= 0)
 		return 0;
-
 	p->perf_opened = 0;
 	for (i = 0; i < PERF_MAX; i++) {
 		struct perf_event_attr attr;
@@ -89,9 +85,8 @@ int perf_start(perf_t *p, const pid_t pid)
 		p->perf_stat[i].fd = syscall(__NR_perf_event_open, &attr, pid, -1, -1, 0);
 		if (p->perf_stat[i].fd > -1)
 			p->perf_opened++;
-		else {
+		else
 			return -1;
-		}
 	}
 	if (!p->perf_opened)
 		return -1;
@@ -120,54 +115,36 @@ int perf_start(perf_t *p, const pid_t pid)
  */
 int perf_stop(perf_t *p)
 {
-	/* perf data */
-	typedef struct {
-		uint64_t counter;		/* perf counter */
-		uint64_t time_enabled;		/* perf time enabled */
-		uint64_t time_running;		/* perf time running */
-	} perf_data_t;
-
 	size_t i = 0;
-	perf_data_t data;
-	ssize_t ret;
-	int rc = -1;
-	double scale;
 
 	if (!p)
 		return -1;
 	if (!p->perf_opened)
-		goto out_ok;
-
+		return -1;
 	for (i = 0; i < PERF_MAX; i++) {
-		int fd = p->perf_stat[i].fd;
+		const int fd = p->perf_stat[i].fd;
 
-		if (fd < 0) {
-			p->perf_stat[i].valid = false;
+		/* assume invalid unless we get good data */
+		p->perf_stat[i].valid = false;
+		if (fd < 0)
 			continue;
-		}
-		if (ioctl(fd, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP) < 0) {
-			p->perf_stat[i].valid = false;
-		} else {
-			memset(&data, 0, sizeof(data));
-			ret = read(fd, &data, sizeof(data));
-			if (ret != sizeof(data)) {
-				p->perf_stat[i].valid = false;
-			} else {
-				scale = data.time_running ?
+		if (ioctl(fd, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP) == 0) {
+			perf_data_t data;
+
+			if (read(fd, &data, sizeof(data)) == sizeof(data)) {
+				const double scale = data.time_running ?
 					data.time_enabled / data.time_running :
 					((data.time_enabled == 0) ? 1.0 : 0.0);
 
-				p->perf_stat[i].counter += (uint64_t)((double)data.counter * scale);
 				p->perf_stat[i].valid = true;
+				p->perf_stat[i].counter += (uint64_t)
+					((double)data.counter * scale);
 			}
 		}
 		(void)close(fd);
 		p->perf_stat[i].fd = -1;
 	}
-out_ok:
-	rc = 0;
-
-	return rc;
+	return 0;
 }
 
 /*
