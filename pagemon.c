@@ -119,6 +119,7 @@ enum {
 typedef uint64_t addr_t;		/* Addresses */
 typedef int64_t index_t;		/* Index into page tables */
 typedef uint64_t pagemap_t;		/* PTE page map bits */
+typedef uint64_t checksum_t;		/* Pagemap checksum */
 
 /*
  *  Memory map info, represents 1 or more pages
@@ -175,6 +176,8 @@ typedef struct {
 	WINDOW *mainwin;		/* curses main window */
 	sigjmp_buf env;			/* terminate abort jmp */
 	addr_t max_pages;		/* Max pages in system */
+	checksum_t checksum;		/* Pagemap check sum */
+	checksum_t prev_checksum;	/* Previous checksum */
 	uint32_t page_size;		/* Page size in bytes */
 	pid_t pid;			/* Process ID */
 	mem_info_t mem_info;		/* Mapping and page info */
@@ -381,8 +384,7 @@ static int read_maps(const bool force)
 	uint32_t i, j, n = 0;
 	char buffer[4096];
 	page_t *page;
-	uint64_t checksum = 0;
-	static uint64_t prev_checksum = 0ULL;
+	checksum_t checksum = 0ULL;
 	map_t *map;
 
 	g.mem_info.npages = 0;
@@ -391,7 +393,7 @@ static int read_maps(const bool force)
 	if (kill(g.pid, 0) < 0)
 		return ERR_NO_PROCESS;
 	if (force)
-		prev_checksum = 0;
+		g.prev_checksum = 0;
 
 	fp = fopen(g.path_maps, "r");
 	if (fp == NULL)
@@ -449,10 +451,14 @@ static int read_maps(const bool force)
 	}
 	fclose(fp);
 
+	checksum += g.mem_info.npages;
+	checksum += n;
+	g.checksum = checksum;
+
 	/* No change in maps, so nothing to do */
-	if (checksum == prev_checksum)
+	if (g.checksum == g.prev_checksum)
 		return OK;
-	prev_checksum = checksum;
+	g.prev_checksum = checksum;
 
 	/* Unlikely, but need to keep Coverity Scan happy */
 	if (g.mem_info.npages > g.max_pages)
