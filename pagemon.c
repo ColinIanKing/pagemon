@@ -731,7 +731,6 @@ static int show_pages(
 		map_t *map;
 		addr_t addr, offset;
 		const size_t sz = sizeof(pagemap_info_buf);
-		ssize_t ret;
 
 		if (index >= (index_t)g.mem_info.npages) {
 			wattrset(g.mainwin, COLOR_PAIR(BLACK_BLACK));
@@ -751,7 +750,7 @@ static int show_pages(
 
 		memset(pagemap_info_buf, 0, sz);
 		if (lseek(fd, offset, SEEK_SET) != (off_t)-1) {
-			ret = read(fd, pagemap_info_buf, sz);
+			ssize_t ret = read(fd, pagemap_info_buf, sz);
 			(void)ret;
 		}
 
