@@ -1,3 +1,26 @@
+pagemon (0.01.08-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Add more page info to checksum on to ensure we have identical maps
+  * Fix wrapping of paragraph in man page
+  * Update date in manual
+  * Reduce scope of ret
+  * Move initialization of vars to avoid -Wclobber gcc warnings
+  * Add clean up on segfault or bus error sig handling
+  * Guard against cursor_index being outside npages range
+  * Check if process is still alive before waiting for next iteration
+  * Don't break on failed seek or read of map info
+  * Add 'c' key to close pop up windows
+  * Update -p thunderbird example in man page
+  * More 80 column friendly source changes
+  * Improve error handling on -p option
+  * Enable -p option to have the PID or name of the process to monitor
+  * Better checking for bytes read on page info reads
+  * Fix zoom scaling on memory view
+  * Remove commented out memset
+
+ -- Colin King <colin.king@canonical.com>  Sun, 31 Jan 2016 12:25:11 +0000
+
 pagemon (0.01.07-1) unstable; urgency=medium
 
   * Makefile: bump version
