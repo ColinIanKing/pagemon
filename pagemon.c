@@ -1233,7 +1233,7 @@ int main(int argc, char **argv)
 		if (g.resized) {
 			int newx, newy;
 			const index_t cursor_index = page_index +
-				(p->xpos + (p->ypos * p->xmax));
+				zoom * (p->xpos + (p->ypos * p->xmax));
 			struct winsize ws;
 
 			if (ioctl(fileno(stdin), TIOCGWINSZ, &ws) < 0) {
@@ -1584,9 +1584,12 @@ force_ch:
 		if (g.view == VIEW_MEM) {
 			const position_t *pc = &position[VIEW_PAGE];
 			const index_t cursor_index = page_index +
-				(pc->xpos + (pc->ypos * pc->xmax));
-			const addr_t addr = g.mem_info.pages[cursor_index].addr +
-				data_index + (p->xpos + (p->ypos * p->xmax));
+				zoom * (pc->xpos + (pc->ypos * pc->xmax));
+			const addr_t addr =
+				(cursor_index >= (index_t)g.mem_info.npages) ?
+					g.mem_info.last_addr :
+					g.mem_info.pages[cursor_index].addr +
+					data_index + (p->xpos + (p->ypos * p->xmax));
 
 			if (addr >= g.mem_info.last_addr) {
 				page_index = prev_page_index;
