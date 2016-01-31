@@ -1468,6 +1468,14 @@ force_ch:
 			ticks--;
 			ticks = MAXIMUM(MIN_TICKS, ticks);
 			break;
+		case 'c':
+		case 'C':
+			/* Clear pop ups */
+			g.perf_view = false;
+			g.vm_view = false;
+			g.tab_view = false;
+			g.help_view = false;
+			break;
 		case KEY_DOWN:
 			blink = 0;
 			if (g.view == VIEW_PAGE)
