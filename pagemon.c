@@ -718,7 +718,7 @@ static int show_pages(
 		int32_t j;
 		map_t *map;
 		addr_t addr, offset;
-		const size_t sz = xmax * sizeof(pagemap_t);
+		const size_t sz = sizeof(pagemap_info_buf);
 		ssize_t ret;
 
 		if (index >= (index_t)g.mem_info.npages) {
@@ -736,13 +736,12 @@ static int show_pages(
 		addr = g.mem_info.pages[index].addr;
 		map = g.mem_info.pages[index].map;
 		offset = (addr >> shift) & ~7;
-		if (lseek(fd, offset, SEEK_SET) == (off_t)-1)
-			break;
 
-		memset(pagemap_info_buf, 0, sizeof(pagemap_info_buf));
-		ret = read(fd, pagemap_info_buf, sz);
-		if ((ret < 1) || (ret > (ssize_t)sz))
-			break;
+		memset(pagemap_info_buf, 0, sz);
+		if (lseek(fd, offset, SEEK_SET) != (off_t)-1) {
+			ret = read(fd, pagemap_info_buf, sz);
+			(void)ret;
+		}
 
 		for (j = 0; j < xmax; j++) {
 			char state = '.';
