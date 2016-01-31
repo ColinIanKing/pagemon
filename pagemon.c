@@ -539,13 +539,17 @@ static void show_perf(void)
 		perf_ticker = 0;
 	}
 	wattrset(g.mainwin, COLOR_PAIR(WHITE_CYAN) | A_BOLD);
-	mvwprintw(g.mainwin, y + 0, x, " Page Faults (User Space):   %15" PRIu64 " ",
+	mvwprintw(g.mainwin, y + 0, x,
+		" Page Faults (User Space):   %15" PRIu64 " ",
 		perf_counter(&g.perf, PERF_TP_PAGE_FAULT_USER));
-	mvwprintw(g.mainwin, y + 1, x, " Page Faults (Kernel Space): %15" PRIu64 " ",
+	mvwprintw(g.mainwin, y + 1, x,
+		" Page Faults (Kernel Space): %15" PRIu64 " ",
 		perf_counter(&g.perf, PERF_TP_PAGE_FAULT_KERNEL));
-	mvwprintw(g.mainwin, y + 2, x, " Kernel Page Allocate:       %15" PRIu64 " ",
+	mvwprintw(g.mainwin, y + 2, x,
+		" Kernel Page Allocate:       %15" PRIu64 " ",
 		perf_counter(&g.perf, PERF_TP_MM_PAGE_ALLOC));
-	mvwprintw(g.mainwin, y + 3, x, " Kernel Page Free:           %15" PRIu64 " ",
+	mvwprintw(g.mainwin, y + 3, x,
+		" Kernel Page Free:           %15" PRIu64 " ",
 		perf_counter(&g.perf, PERF_TP_MM_PAGE_FREE));
 
 }
@@ -574,13 +578,14 @@ static void show_vm(void)
 		uint64_t sz;
 
 		if (sscanf(buffer, "State: %5s %12s", state, longstate) == 2) {
-			mvwprintw(g.mainwin, y++, x, " State:    %-12.12s ",
-				longstate);
+			mvwprintw(g.mainwin, y++, x,
+				" State:    %-12.12s ", longstate);
 			continue;
 		}
 		if (sscanf(buffer, "Vm%8s %" SCNu64 "%7s",
 		    vmname, &sz, size) == 3) {
-			mvwprintw(g.mainwin, y++, x, " Vm%-6.6s %10" PRIu64 " %s ",
+			mvwprintw(g.mainwin, y++, x,
+				" Vm%-6.6s %10" PRIu64 " %s ",
 				vmname, sz, size);
 			continue;
 		}
@@ -589,12 +594,15 @@ static void show_vm(void)
 
 	if (!read_faults(&minor, &major)) {
 		mvwprintw(g.mainwin, y++, x, " %-23s", "Page Faults:");
-		mvwprintw(g.mainwin, y++, x, " Minor: %12" PRIu64 "    ", minor);
-		mvwprintw(g.mainwin, y++, x, " Major: %12" PRIu64 "    ", major);
+		mvwprintw(g.mainwin, y++, x,
+			" Minor: %12" PRIu64 "    ", minor);
+		mvwprintw(g.mainwin, y++, x,
+			" Major: %12" PRIu64 "    ", major);
 	}
 
 	if (!read_oom_score(&score)) {
-		mvwprintw(g.mainwin, y++, x, " OOM Score: %8" PRIu64 "    ", score);
+		mvwprintw(g.mainwin, y++, x,
+			" OOM Score: %8" PRIu64 "    ", score);
 	}
 }
 
@@ -635,7 +643,8 @@ static void show_page_bits(
 		" Map Name:  %-35.35s ", map->name[0] == '\0' ?
 			"[Anonymous]" : basename(map->name));
 
-	offset = sizeof(pagemap_t) * (g.mem_info.pages[index].addr / g.page_size);
+	offset = sizeof(pagemap_t) *
+		(g.mem_info.pages[index].addr / g.page_size);
 	if (lseek(fd, offset, SEEK_SET) == (off_t)-1)
 		return;
 	if (read(fd, &pagemap_info, sizeof(pagemap_info)) != sizeof(pagemap_info))
@@ -759,7 +768,8 @@ static int show_pages(
 					offset = (addr >> shift) & ~7;
 					if (lseek(fd, offset, SEEK_SET) == (off_t)-1)
 						break;
-					if (read(fd, &pagemap_info_buf[j], (xmax - j) * sizeof(pagemap_t)) < 0)
+					if (read(fd, &pagemap_info_buf[j],
+					    (xmax - j) * sizeof(pagemap_t)) < 0)
 						break;
 				}
 
@@ -1193,7 +1203,8 @@ int main(int argc, char **argv)
 		if ((g.view == VIEW_PAGE) && g.auto_zoom) {
 			const int32_t window_pages = p->xmax * p->ymax;
 
-			zoom = (g.mem_info.npages + window_pages - 1) / window_pages;
+			zoom = (g.mem_info.npages + window_pages - 1) /
+				window_pages;
 			zoom = MINIMUM(MAX_ZOOM, zoom);
 			zoom = MAXIMUM(MIN_ZOOM, zoom);
 		}
@@ -1298,8 +1309,8 @@ int main(int argc, char **argv)
 			wattrset(g.mainwin, blink_attrs);
 			cursor_ch = mvwinch(g.mainwin, p->ypos + 1, curxpos)
 				& A_CHARTEXT;
-			mvwprintw(g.mainwin, p->ypos + 1, curxpos, "%c", cursor_ch);
-
+			mvwprintw(g.mainwin, p->ypos + 1, curxpos,
+				"%c", cursor_ch);
 			blink_attrs = A_BOLD | ((blink & BLINK_MASK) ?
 				COLOR_PAIR(BLACK_WHITE) :
 				COLOR_PAIR(WHITE_BLACK));
@@ -1307,7 +1318,8 @@ int main(int argc, char **argv)
 			wattrset(g.mainwin, blink_attrs);
 			cursor_ch = mvwinch(g.mainwin, p->ypos + 1, curxpos)
 				& A_CHARTEXT;
-			mvwprintw(g.mainwin, p->ypos + 1, curxpos, "%c", cursor_ch);
+			mvwprintw(g.mainwin, p->ypos + 1, curxpos,
+				"%c", cursor_ch);
 		} else {
 			int32_t curxpos = p->xpos + ADDR_OFFSET;
 			const index_t cursor_index = page_index +
@@ -1332,7 +1344,8 @@ int main(int argc, char **argv)
 			wattrset(g.mainwin, blink_attrs);
 			cursor_ch = mvwinch(g.mainwin, p->ypos + 1, curxpos)
 				& A_CHARTEXT;
-			mvwprintw(g.mainwin, p->ypos + 1, curxpos, "%c", cursor_ch);
+			mvwprintw(g.mainwin, p->ypos + 1, curxpos,
+				"%c", cursor_ch);
 		}
 		ch = getch();
 
