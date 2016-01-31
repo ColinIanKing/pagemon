@@ -251,7 +251,7 @@ static int read_buf(
 /*
  *  proc_name_to_pid()
  *	find a process by name, return PID of
- *	first match found
+ *	first match found. Zero indicates error
  */
 static pid_t proc_name_to_pid(char *const name)
 {
@@ -268,8 +268,14 @@ static pid_t proc_name_to_pid(char *const name)
 			break;
 		}
 	}
-	if (isnum)
-		return (pid_t)strtol(name, NULL, 10);
+	if (isnum) {
+		pid = (pid_t)strtol(name, NULL, 10);
+		if (errno || (pid < 1)) {
+			fprintf(stderr, "Invalid pid value '%s'\n", name);
+			return 0;
+		}
+		return pid;
+	}
 
 	/* No, search for process name */
 	dir = opendir("/proc");
@@ -293,11 +299,14 @@ static pid_t proc_name_to_pid(char *const name)
 
 		if (!strcmp(name, bn)) {
 			pid = (pid_t)strtol(d->d_name, NULL, 10);
-			if (pid > 0)
+			if ((errno == 0) && (pid > 0))
 				break;
 		}
 	}
 	(void)closedir(dir);
+
+	if (!pid)
+		fprintf(stderr, "Cannot find process '%s'\n", name);
 	return pid;
 }
 
@@ -1062,10 +1071,8 @@ int main(int argc, char **argv)
 			break;
 		case 'p':
 			g.pid = proc_name_to_pid(optarg);
-			if (errno || (g.pid < 1)) {
-				fprintf(stderr, "Invalid pid value\n");
+			if (g.pid < 1)
 				exit(EXIT_FAILURE);
-			}
 			g.opt_flags |= OPT_FLAG_PID;
 			break;
 		case 'r':
