@@ -33,6 +33,9 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <ncurses.h>
+#include <dirent.h>
+#include <libgen.h>
+#include <ctype.h>
 
 #include "perf.h"
 
@@ -244,6 +247,60 @@ static int read_buf(
 	buffer[ret - 1] = '\0';
 	return 0;
 }
+
+/*
+ *  proc_name_to_pid()
+ *	find a process by name, return PID of
+ *	first match found
+ */
+static pid_t proc_name_to_pid(char *const name)
+{
+	char *ptr;
+	bool isnum = true;
+	DIR *dir;
+	struct dirent *d;
+	pid_t pid = 0;
+
+	/* Could be just a pid in numeric form */
+	for (ptr = name; *ptr; ptr++) {
+		if (!isdigit(*ptr)) {
+			isnum = false;
+			break;
+		}
+	}
+	if (isnum)
+		return (pid_t)strtol(name, NULL, 10);
+
+	/* No, search for process name */
+	dir = opendir("/proc");
+	if (!dir)
+		return pid;
+
+	while ((d = readdir(dir)) != NULL) {
+		char path[PATH_MAX], buf[4096], *bn;
+
+		if (!isdigit(d->d_name[0]))
+			continue;
+
+		snprintf(path, sizeof(path), "/proc/%s/cmdline", d->d_name);
+
+		if (read_buf(path, buf, sizeof(buf)) < 0)
+			continue;
+
+		bn = basename(buf);
+		if (!bn)
+			continue;
+
+		if (!strcmp(name, bn)) {
+			pid = (pid_t)strtol(d->d_name, NULL, 10);
+			if (pid > 0)
+				break;
+		}
+	}
+	(void)closedir(dir);
+	return pid;
+}
+
 
 /*
  *  read_faults()
@@ -1004,8 +1061,8 @@ int main(int argc, char **argv)
 			exit(EXIT_SUCCESS);
 			break;
 		case 'p':
-			g.pid = strtol(optarg, NULL, 10);
-			if (errno || (g.pid < 0)) {
+			g.pid = proc_name_to_pid(optarg);
+			if (errno || (g.pid < 1)) {
 				fprintf(stderr, "Invalid pid value\n");
 				exit(EXIT_FAILURE);
 			}
