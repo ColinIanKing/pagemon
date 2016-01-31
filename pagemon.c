@@ -36,6 +36,7 @@
 #include <dirent.h>
 #include <libgen.h>
 #include <ctype.h>
+#include <setjmp.h>
 
 #include "perf.h"
 
@@ -81,6 +82,7 @@
 #define ERR_TOO_FEW_PAGES	(-6)
 #define ERR_RESIZE_FAIL		(-7)
 #define ERR_NO_PROCESS		(-8)
+#define ERR_FAULT		(-9)
 
 /*
  *  PTE bits from uint64_t in /proc/PID/pagemap
@@ -170,6 +172,7 @@ typedef struct {
  */
 typedef struct {
 	WINDOW *mainwin;		/* curses main window */
+	sigjmp_buf env;			/* terminate abort jmp */
 	addr_t max_pages;		/* Max pages in system */
 	uint32_t page_size;		/* Page size in bytes */
 	pid_t pid;			/* Process ID */
@@ -177,6 +180,7 @@ typedef struct {
 #if defined(PERF_ENABLED)
 	perf_t perf;			/* Perf context */
 #endif
+	bool curses_started;		/* Are we in curses mode? */
 	bool tab_view;			/* Page pop-up info */
 	bool vm_view;			/* Process VM stats */
 	bool help_view;			/* Help pop-up info */
@@ -496,9 +500,16 @@ static void handle_winch(int sig)
  */
 static void handle_terminate(int sig)
 {
+	static bool already_handled = false;
 	(void)sig;
 
+	if (already_handled) {
+		exit(EXIT_FAILURE);
+	}
+
 	g.terminate = true;
+
+	siglongjmp(g.env, 1);
 }
 
 /*
@@ -1054,9 +1065,15 @@ int main(int argc, char **argv)
 	index_t page_index = 0, prev_page_index;
 	index_t data_index = 0, prev_data_index;
 	int32_t tick = 0, ticks = 60, blink = 0, zoom = 1;
-	int rc = OK, ret;
+	int rc, ret;
+
+	if (sigsetjmp(g.env, 0)) {
+		rc = ERR_FAULT;
+		goto terminate;
+	}
 
 	g.pid = -1;
+	rc = OK;
 
 	for (;;) {
 		int c = getopt(argc, argv, "ad:hp:rt:vz:");
@@ -1168,6 +1185,7 @@ int main(int argc, char **argv)
 	keypad(stdscr, 1);
 	curs_set(0);
 	g.mainwin = newwin(LINES, COLS, 0, 0);
+	g.curses_started = true;
 
 	init_pair(WHITE_RED, COLOR_WHITE, COLOR_RED);
 	init_pair(WHITE_BLUE, COLOR_WHITE, COLOR_BLUE);
@@ -1634,8 +1652,12 @@ force_ch:
 	wrefresh(g.mainwin);
 	refresh();
 	delwin(g.mainwin);
-	clear();
-	endwin();
+
+terminate:
+	if (g.curses_started) {
+		clear();
+		endwin();
+	}
 
 #if defined(PERF_ENABLED)
 	perf_stop(&g.perf);
@@ -1672,6 +1694,9 @@ force_ch:
 		break;
 	case ERR_NO_PROCESS:
 		fprintf(stderr, "Process %d exited\n", g.pid);
+		break;
+	case ERR_FAULT:
+		fprintf(stderr, "Internal error, segmentation fault or bus error\n");
 		break;
 	default:
 		fprintf(stderr, "Unknown failure (%d)\n", rc);
