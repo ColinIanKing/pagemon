@@ -1622,12 +1622,15 @@ force_ch:
 		if (g.terminate)
 			break;
 
+		if (kill(g.pid, 0) < 0)
+			break;
 		usleep(udelay);
 	}
 
-	wclear(g.mainwin);
-	delwin(g.mainwin);
+	werase(g.mainwin);
+	wrefresh(g.mainwin);
 	refresh();
+	delwin(g.mainwin);
 	clear();
 	endwin();
 
