@@ -59,6 +59,7 @@
 #define MINIMUM(a, b)		((a) < (b) ? (a) : (b))
 
 #define DEFAULT_UDELAY		(15000)	/* Delay between each refresh */
+#define DEFAULT_TICKS		(60)	/* Ticks between dirty page checks */
 #define PROCPATH_MAX		(32)	/* Size of proc pathnames */
 #define BLINK_MASK		(0x20)	/* Cursor blink counter mask */
 
@@ -1060,11 +1061,11 @@ int main(int argc, char **argv)
 {
 	struct sigaction action;
 	map_t *map;
-	useconds_t udelay = DEFAULT_UDELAY;
+	useconds_t udelay;
 	position_t position[2];
-	index_t page_index = 0, prev_page_index;
-	index_t data_index = 0, prev_data_index;
-	int32_t tick = 0, ticks = 60, blink = 0, zoom = 1;
+	index_t page_index, prev_page_index;
+	index_t data_index, prev_data_index;
+	int32_t tick, ticks, blink, zoom;
 	int rc, ret;
 
 	if (sigsetjmp(g.env, 0)) {
@@ -1074,6 +1075,13 @@ int main(int argc, char **argv)
 
 	g.pid = -1;
 	rc = OK;
+	blink = 0;
+	zoom = MIN_ZOOM;
+	ticks = DEFAULT_TICKS;
+	tick = 0;
+	udelay = DEFAULT_UDELAY;
+	page_index = 0;
+	data_index = 0;
 
 	for (;;) {
 		int c = getopt(argc, argv, "ad:hp:rt:vz:");
