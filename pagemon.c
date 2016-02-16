@@ -772,7 +772,6 @@ static int show_pages(
 				map_t *new_map;
 				register pagemap_t pagemap_info;
 
-				addr = g.mem_info.pages[index].addr;
 				new_map = g.mem_info.pages[index].map;
 				/*
 				 *  On a different mapping? If so, slurp up
