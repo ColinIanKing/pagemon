@@ -1,3 +1,11 @@
+pagemon (0.01.09-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Debian/control: update Standards-Version to 3.9.8
+  * Remove redundant statement, found using scan-build
+
+ -- Colin King <colin.king@canonical.com>  Tue, 4 Oct 2016 10:37:15 +0100
+
 pagemon (0.01.08-1) unstable; urgency=medium
 
   * Makefile: bump version
