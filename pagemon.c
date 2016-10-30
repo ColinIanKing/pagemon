@@ -767,7 +767,6 @@ static int show_pages(
 				attr = COLOR_PAIR(BLACK_BLACK);
 				state = '~';
 			} else {
-				off_t offset;
 				map_t *new_map;
 				register pagemap_t pagemap_info;
 
