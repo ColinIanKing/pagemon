@@ -734,7 +734,6 @@ static int show_pages(
 	index = page_index;
 	for (i = 1; i <= ymax; i++) {
 		int32_t j;
-		map_t *map;
 		addr_t addr, offset;
 		const size_t sz = sizeof(pagemap_info_buf);
 
