@@ -23,6 +23,16 @@ VERSION=0.01.09
 CFLAGS += -Wall -Wextra -DVERSION='"$(VERSION)"' -O2
 LDFLAGS += -lncurses
 
+
+# Pedantic flags
+#
+ifeq ($(PEDANTIC),1)
+CFLAGS += -Wabi -Wcast-qual -Wfloat-equal -Wmissing-declarations \
+	-Wmissing-format-attribute -Wno-long-long -Wpacked \
+	-Wredundant-decls -Wshadow -Wno-missing-field-initializers \
+	-Wno-missing-braces -Wno-sign-compare -Wno-multichar
+endif
+
 BINDIR=/usr/sbin
 MANDIR=/usr/share/man/man8
 
