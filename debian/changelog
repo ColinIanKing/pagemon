@@ -1,3 +1,12 @@
+pagemon (0.01.10-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * fix shadowing offset variable
+  * fix shadowing map variable
+  * Makefile: Add PEDANTIC gcc flags
+
+ -- Colin King <colin.king@canonical.com>  Wed, 2 Nov 2016 13:35:11 -0600
+
 pagemon (0.01.09-1) unstable; urgency=medium
 
   * Makefile: bump version
