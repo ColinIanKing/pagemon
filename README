@@ -8,4 +8,4 @@ To be able access a process memory this tool needs to be run as root.
 Requirements:
 	ncurses development library
 
-Copyright (C) Colin Ian King, 2015,2016
+Copyright (C) Colin Ian King, 2015-2017
