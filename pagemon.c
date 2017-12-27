@@ -673,31 +673,36 @@ static void show_page_bits(
 		" Flag:      0x%16.16" PRIx64 "%18s", pagemap_info, "");
 	if (pagemap_info & PAGE_SWAPPED) {
 		mvwprintw(g.mainwin, 10, x,
-			"   Swap Type:           0x%2.2" PRIx64 "%20s",
+			" Swap Type:           0x%2.2" PRIx64 "%22s",
 			pagemap_info & 0x1f, "");
 		mvwprintw(g.mainwin, 11, x,
-			"   Swap Offset:         0x%16.16" PRIx64 "%6s",
+			" Swap Offset:         0x%16.16" PRIx64 "%8s",
 			(pagemap_info & 0x00ffffffffffffffULL) >> 5, "");
 	} else {
 		mvwprintw(g.mainwin, 10, x, "%48s", "");
-		mvwprintw(g.mainwin, 11, x,
-			"   Page Frame Number:   0x%16.16" PRIx64 "%6s",
-			pagemap_info & 0x00ffffffffffffffULL, "");
+		if (pagemap_info & PAGE_PRESENT) {
+			mvwprintw(g.mainwin, 11, x,
+				" Physical Address:    0x%16.16" PRIx64 "%8s",
+				(pagemap_info & 0x00ffffffffffffffULL) * g.page_size, "");
+		} else {
+			mvwprintw(g.mainwin, 11, x,
+				" Physical Address:    0x----------------%8s", "");
+		}
 	}
 	mvwprintw(g.mainwin, 12, x,
-		"   Soft-dirty PTE:      %3s%21s",
+		" Soft-dirty PTE:      %3s%23s",
 		(pagemap_info & PAGE_PTE_SOFT_DIRTY) ? "Yes" : "No ", "");
 	mvwprintw(g.mainwin, 13, x,
-		"   Exclusively Mapped:  %3s%21s",
+		" Exclusively Mapped:  %3s%23s",
 		(pagemap_info & PAGE_EXCLUSIVE_MAPPED) ? "Yes" : "No ", "");
 	mvwprintw(g.mainwin, 14, x,
-		"   File or Shared Anon: %3s%21s",
+		" File or Shared Anon: %3s%23s",
 		(pagemap_info & PAGE_FILE_SHARED_ANON) ? "Yes" : "No ", "");
 	mvwprintw(g.mainwin, 15, x,
-		"   Present in Swap:     %3s%21s",
+		" Present in Swap:     %3s%23s",
 		(pagemap_info & PAGE_SWAPPED) ? "Yes" : "No ", "");
 	mvwprintw(g.mainwin, 16, x,
-		"   Present in RAM:      %3s%21s",
+		" Present in RAM:      %3s%23s",
 		(pagemap_info & PAGE_PRESENT) ? "Yes" : "No ", "");
 }
 
