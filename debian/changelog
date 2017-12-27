@@ -1,3 +1,11 @@
+pagemon (0.01.11-1) unstable; urgency=medium
+
+  * Bump version
+  * Update Standards-Version to 4.1.2
+  * Print physical location rather than pfn
+
+ -- Colin King <colin.king@canonical.com>  Wed, 27 Dec 2017 17:10:12 +0000
+
 pagemon (0.01.10-1) unstable; urgency=medium
 
   * Makefile: bump version
