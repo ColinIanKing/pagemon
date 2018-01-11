@@ -20,7 +20,7 @@
 
 VERSION=0.01.11
 
-CFLAGS += -Wall -Wextra -DVERSION='"$(VERSION)"' -O2
+CFLAGS += -Wall -Wextra -DVERSION='"$(VERSION)"' -O2 -fPIC
 LDFLAGS += -lncurses
 
 
