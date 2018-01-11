@@ -1504,7 +1504,9 @@ force_ch:
 		case 'c':
 		case 'C':
 			/* Clear pop ups */
+#if defined(PERF_ENABLED)
 			g.perf_view = false;
+#endif
 			g.vm_view = false;
 			g.tab_view = false;
 			g.help_view = false;
