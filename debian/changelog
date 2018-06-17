@@ -1,3 +1,15 @@
+pagemon (0.01.13-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Add some more constifications
+  * voidify function returns
+  * debian/copyright: use secure URI
+  * debian/control: update debhelper to >= 11
+  * debian/compat: update to 11
+  * debian/control: remove trailing empty line
+
+ -- Colin King <colin.king@canonical.com>  Sun, 17 Jun 2018 12:31:11 +0100
+
 pagemon (0.01.12-1) unstable; urgency=medium
 
   * Makefile: bump version
