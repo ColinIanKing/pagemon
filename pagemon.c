@@ -230,7 +230,7 @@ static void mem_to_str(const addr_t addr, char *buf, const size_t buflen)
 		scaled = val / TB;
 		unit = 'T';
 	}
-	snprintf(buf, buflen, "%7" PRIu64 " %c", scaled, unit);
+	(void)snprintf(buf, buflen, "%7" PRIu64 " %c", scaled, unit);
 }
 
 /*
@@ -280,7 +280,7 @@ static pid_t proc_name_to_pid(char *const name)
 	if (isnum) {
 		pid = (pid_t)strtol(name, NULL, 10);
 		if (errno || (pid < 1)) {
-			fprintf(stderr, "Invalid pid value '%s'\n", name);
+			(void)fprintf(stderr, "Invalid pid value '%s'\n", name);
 			return 0;
 		}
 		return pid;
@@ -297,7 +297,8 @@ static pid_t proc_name_to_pid(char *const name)
 		if (!isdigit(d->d_name[0]))
 			continue;
 
-		snprintf(path, sizeof(path), "/proc/%s/cmdline", d->d_name);
+		(void)snprintf(path, sizeof(path), "/proc/%s/cmdline",
+			       d->d_name);
 
 		if (read_buf(path, buf, sizeof(buf)) < 0)
 			continue;
@@ -315,7 +316,7 @@ static pid_t proc_name_to_pid(char *const name)
 	(void)closedir(dir);
 
 	if (!pid)
-		fprintf(stderr, "Cannot find process '%s'\n", name);
+		(void)fprintf(stderr, "Cannot find process '%s'\n", name);
 	return pid;
 }
 
@@ -526,7 +527,7 @@ static void handle_terminate(int sig)
  */
 static void show_usage(void)
 {
-	printf(APP_NAME ", version " VERSION "\n\n"
+	(void)printf(APP_NAME ", version " VERSION "\n\n"
 		"Usage: " APP_NAME " [options]\n"
 		" -a        enable automatic zoom mode\n"
 		" -d        delay in microseconds between refreshes, "
@@ -558,16 +559,16 @@ static void show_perf(void)
 		perf_ticker = 0;
 	}
 	wattrset(g.mainwin, COLOR_PAIR(WHITE_CYAN) | A_BOLD);
-	mvwprintw(g.mainwin, y + 0, x,
+	(void)mvwprintw(g.mainwin, y + 0, x,
 		" Page Faults (User Space):   %15" PRIu64 " ",
 		perf_counter(&g.perf, PERF_TP_PAGE_FAULT_USER));
-	mvwprintw(g.mainwin, y + 1, x,
+	(void)mvwprintw(g.mainwin, y + 1, x,
 		" Page Faults (Kernel Space): %15" PRIu64 " ",
 		perf_counter(&g.perf, PERF_TP_PAGE_FAULT_KERNEL));
-	mvwprintw(g.mainwin, y + 2, x,
+	(void)mvwprintw(g.mainwin, y + 2, x,
 		" Kernel Page Allocate:       %15" PRIu64 " ",
 		perf_counter(&g.perf, PERF_TP_MM_PAGE_ALLOC));
-	mvwprintw(g.mainwin, y + 3, x,
+	(void)mvwprintw(g.mainwin, y + 3, x,
 		" Kernel Page Free:           %15" PRIu64 " ",
 		perf_counter(&g.perf, PERF_TP_MM_PAGE_FREE));
 
@@ -590,7 +591,7 @@ static void show_vm(void)
 	if (fp == NULL)
 		return;
 
-	wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+	(void)wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
 		char vmname[9], size[8];
 		char state[6], longstate[13];
@@ -603,24 +604,24 @@ static void show_vm(void)
 		}
 		if (sscanf(buffer, "Vm%8s %" SCNu64 "%7s",
 		    vmname, &sz, size) == 3) {
-			mvwprintw(g.mainwin, y++, x,
+			(void)mvwprintw(g.mainwin, y++, x,
 				" Vm%-6.6s %10" PRIu64 " %s ",
 				vmname, sz, size);
 			continue;
 		}
 	}
-	fclose(fp);
+	(void)fclose(fp);
 
 	if (!read_faults(&minor, &major)) {
-		mvwprintw(g.mainwin, y++, x, " %-23s", "Page Faults:");
-		mvwprintw(g.mainwin, y++, x,
+		(void)mvwprintw(g.mainwin, y++, x, " %-23s", "Page Faults:");
+		(void)mvwprintw(g.mainwin, y++, x,
 			" Minor: %12" PRIu64 "    ", minor);
-		mvwprintw(g.mainwin, y++, x,
+		(void)mvwprintw(g.mainwin, y++, x,
 			" Major: %12" PRIu64 "    ", major);
 	}
 
 	if (!read_oom_score(&score)) {
-		mvwprintw(g.mainwin, y++, x,
+		(void)mvwprintw(g.mainwin, y++, x,
 			" OOM Score: %8" PRIu64 "    ", score);
 	}
 }
@@ -640,25 +641,25 @@ static void show_page_bits(
 	const int x = 2;
 
 	mem_to_str(map->end - map->begin, buf, sizeof(buf) - 1);
-	wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-	mvwprintw(g.mainwin, 2, x,
+	(void)wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+	(void)mvwprintw(g.mainwin, 2, x,
 		" Page:      0x%16.16" PRIx64 "%18s",
 		g.mem_info.pages[index].addr, "");
-	mvwprintw(g.mainwin, 3, x,
+	(void)mvwprintw(g.mainwin, 3, x,
 		" Page Size: 0x%8.8" PRIx32 " bytes%20s",
 		g.page_size, "");
-	mvwprintw(g.mainwin, 4, x,
+	(void)mvwprintw(g.mainwin, 4, x,
 		" Map:       0x%16.16" PRIx64 "-%16.16" PRIx64 " ",
 		map->begin, map->end - 1);
-	mvwprintw(g.mainwin, 5, x,
+	(void)mvwprintw(g.mainwin, 5, x,
 		" Map Size:  %s%27s", buf, "");
-	mvwprintw(g.mainwin, 6, x,
+	(void)mvwprintw(g.mainwin, 6, x,
 		" Device:    %5.5s%31s",
 		map->dev, "");
-	mvwprintw(g.mainwin, 7, x,
+	(void)mvwprintw(g.mainwin, 7, x,
 		" Prot:      %4.4s%32s",
 		map->attr, "");
-	mvwprintw(g.mainwin, 8, x,
+	(void)mvwprintw(g.mainwin, 8, x,
 		" Map Name:  %-35.35s ", map->name[0] == '\0' ?
 			"[Anonymous]" : basename(map->name));
 
@@ -669,17 +670,17 @@ static void show_page_bits(
 	if (read(fd, &pagemap_info, sizeof(pagemap_info)) != sizeof(pagemap_info))
 		return;
 
-	mvwprintw(g.mainwin, 9, x,
+	(void)mvwprintw(g.mainwin, 9, x,
 		" Flag:      0x%16.16" PRIx64 "%18s", pagemap_info, "");
 	if (pagemap_info & PAGE_SWAPPED) {
-		mvwprintw(g.mainwin, 10, x,
+		(void)mvwprintw(g.mainwin, 10, x,
 			" Swap Type:           0x%2.2" PRIx64 "%22s",
 			pagemap_info & 0x1f, "");
-		mvwprintw(g.mainwin, 11, x,
+		(void)mvwprintw(g.mainwin, 11, x,
 			" Swap Offset:         0x%16.16" PRIx64 "%8s",
 			(pagemap_info & 0x00ffffffffffffffULL) >> 5, "");
 	} else {
-		mvwprintw(g.mainwin, 10, x, "%48s", "");
+		(void)mvwprintw(g.mainwin, 10, x, "%48s", "");
 		if (pagemap_info & PAGE_PRESENT) {
 			mvwprintw(g.mainwin, 11, x,
 				" Physical Address:    0x%16.16" PRIx64 "%8s",
@@ -689,19 +690,19 @@ static void show_page_bits(
 				" Physical Address:    0x----------------%8s", "");
 		}
 	}
-	mvwprintw(g.mainwin, 12, x,
+	(void)mvwprintw(g.mainwin, 12, x,
 		" Soft-dirty PTE:      %3s%23s",
 		(pagemap_info & PAGE_PTE_SOFT_DIRTY) ? "Yes" : "No ", "");
-	mvwprintw(g.mainwin, 13, x,
+	(void)mvwprintw(g.mainwin, 13, x,
 		" Exclusively Mapped:  %3s%23s",
 		(pagemap_info & PAGE_EXCLUSIVE_MAPPED) ? "Yes" : "No ", "");
-	mvwprintw(g.mainwin, 14, x,
+	(void)mvwprintw(g.mainwin, 14, x,
 		" File or Shared Anon: %3s%23s",
 		(pagemap_info & PAGE_FILE_SHARED_ANON) ? "Yes" : "No ", "");
-	mvwprintw(g.mainwin, 15, x,
+	(void)mvwprintw(g.mainwin, 15, x,
 		" Present in Swap:     %3s%23s",
 		(pagemap_info & PAGE_SWAPPED) ? "Yes" : "No ", "");
-	mvwprintw(g.mainwin, 16, x,
+	(void)mvwprintw(g.mainwin, 16, x,
 		" Present in RAM:      %3s%23s",
 		(pagemap_info & PAGE_PRESENT) ? "Yes" : "No ", "");
 }
@@ -712,7 +713,7 @@ static void show_page_bits(
  */
 static inline void banner(const int y)
 {
-	mvwprintw(g.mainwin, y, 0, "%*s", COLS, "");
+	(void)mvwprintw(g.mainwin, y, 0, "%*s", COLS, "");
 }
 
 /*
@@ -744,12 +745,12 @@ static int show_pages(
 		const size_t sz = sizeof(pagemap_info_buf);
 
 		if (index >= (index_t)g.mem_info.npages) {
-			wattrset(g.mainwin, COLOR_PAIR(BLACK_BLACK));
-			mvwprintw(g.mainwin, i, 0, "---------------- ");
+			(void)wattrset(g.mainwin, COLOR_PAIR(BLACK_BLACK));
+			(void)mvwprintw(g.mainwin, i, 0, "---------------- ");
 		} else {
 			addr = g.mem_info.pages[index].addr;
-			wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
-			mvwprintw(g.mainwin, i, 0, "%16.16" PRIx64 " ", addr);
+			(void)wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
+			(void)mvwprintw(g.mainwin, i, 0, "%16.16" PRIx64 " ", addr);
 		}
 
 		/*
@@ -757,9 +758,9 @@ static int show_pages(
 		 */
 		addr = g.mem_info.pages[index].addr;
 		map = g.mem_info.pages[index].map;
-		offset = (addr >> shift) & ~7;
+		offset = (addr >> shift) & ~7ULL;
 
-		memset(pagemap_info_buf, 0, sz);
+		(void)memset(pagemap_info_buf, 0, sz);
 		if (lseek(fd, offset, SEEK_SET) != (off_t)-1) {
 			ssize_t ret = read(fd, pagemap_info_buf, sz);
 			(void)ret;
@@ -814,11 +815,11 @@ static int show_pages(
 				}
 				index += zoom;
 			}
-			wattrset(g.mainwin, attr);
-			mvwprintw(g.mainwin, i, ADDR_OFFSET + j, "%c", state);
+			(void)wattrset(g.mainwin, attr);
+			(void)mvwprintw(g.mainwin, i, ADDR_OFFSET + j, "%c", state);
 		}
 	}
-	wattrset(g.mainwin, A_NORMAL);
+	(void)wattrset(g.mainwin, A_NORMAL);
 
 	map = g.mem_info.pages[cursor_index].map;
 	if (map && g.tab_view)
@@ -866,12 +867,12 @@ static int show_memory(
 				nread = -1;
 		}
 
-		wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
+		(void)wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
 		if (index >= (index_t)g.mem_info.npages)
 			mvwprintw(g.mainwin, i, 0, "---------------- ");
 		else
 			mvwprintw(g.mainwin, i, 0, "%16.16" PRIx64 " ", addr);
-		mvwprintw(g.mainwin, i, COLS - 3, "   ");
+		(void)mvwprintw(g.mainwin, i, COLS - 3, "   ");
 
 		for (j = 0; j < xmax; j++) {
 			uint8_t byte;
@@ -879,37 +880,37 @@ static int show_memory(
 			if ((index >= (index_t)g.mem_info.npages) ||
 			    (addr > g.mem_info.last_addr)) {
 				/* End of memory */
-				wattrset(g.mainwin, COLOR_PAIR(BLACK_BLACK));
-				mvwprintw(g.mainwin, i, ADDR_OFFSET +
+				(void)wattrset(g.mainwin, COLOR_PAIR(BLACK_BLACK));
+				(void)mvwprintw(g.mainwin, i, ADDR_OFFSET +
 					(HEX_WIDTH * j), "   ");
-				mvwprintw(g.mainwin, i, ADDR_OFFSET +
+				(void)mvwprintw(g.mainwin, i, ADDR_OFFSET +
 					(HEX_WIDTH * xmax) + j, " ");
 				goto do_border;
 			}
 			if (j > nread) {
 				/* Failed to read data */
-				wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE));
-				mvwprintw(g.mainwin, i, ADDR_OFFSET +
+				(void)wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE));
+				(void)mvwprintw(g.mainwin, i, ADDR_OFFSET +
 					(HEX_WIDTH * j), "?? ");
-				wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
-				mvwprintw(g.mainwin, i, ADDR_OFFSET +
+				(void)wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
+				(void)mvwprintw(g.mainwin, i, ADDR_OFFSET +
 					(HEX_WIDTH * xmax) + j, "?");
 				goto do_border;
 			}
 
 			/* We have some legimate data to display */
  			byte = bytes[j];
-			wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE));
-			mvwprintw(g.mainwin, i, ADDR_OFFSET +
+			(void)wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE));
+			(void)mvwprintw(g.mainwin, i, ADDR_OFFSET +
 				(HEX_WIDTH * j), "%2.2" PRIx8 " ", byte);
-			wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
+			(void)wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
 			byte &= 0x7f;
-			mvwprintw(g.mainwin, i, ADDR_OFFSET +
+			(void)mvwprintw(g.mainwin, i, ADDR_OFFSET +
 				(HEX_WIDTH * xmax) + j, "%c",
 				(byte < 32 || byte > 126) ? '.' : byte);
 do_border:
-			wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
-			mvwprintw(g.mainwin, i, 16 + (HEX_WIDTH * xmax), " ");
+			(void)wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
+			(void)mvwprintw(g.mainwin, i, 16 + (HEX_WIDTH * xmax), " ");
 			data_index++;
 			if (data_index >= g.page_size) {
 				data_index -= g.page_size;
@@ -958,32 +959,32 @@ static inline void show_key(void)
 {
 	banner(LINES - 1);
 	if (g.view == VIEW_PAGE) {
-		wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		mvwprintw(g.mainwin, LINES - 1, 0, "Page View, KEY: ");
-		wattrset(g.mainwin, COLOR_PAIR(WHITE_RED));
-		wprintw(g.mainwin, "A");
-		wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		wprintw(g.mainwin, " Anon/File, ");
-		wattrset(g.mainwin, COLOR_PAIR(WHITE_YELLOW));
-		wprintw(g.mainwin, "P");
-		wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		wprintw(g.mainwin, " Present in RAM, ");
-		wattrset(g.mainwin, COLOR_PAIR(WHITE_CYAN));
-		wprintw(g.mainwin, "D");
-		wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		wprintw(g.mainwin, " Dirty, ");
-		wattrset(g.mainwin, COLOR_PAIR(WHITE_GREEN));
-		wprintw(g.mainwin, "S");
-		wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		wprintw(g.mainwin, " Swap, ");
-		wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
-		wprintw(g.mainwin, ".");
-		wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		wprintw(g.mainwin, " not in RAM");
-		wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE) | A_BOLD);
+		(void)wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		(void)mvwprintw(g.mainwin, LINES - 1, 0, "Page View, KEY: ");
+		(void)wattrset(g.mainwin, COLOR_PAIR(WHITE_RED));
+		(void)wprintw(g.mainwin, "A");
+		(void)wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		(void)wprintw(g.mainwin, " Anon/File, ");
+		(void)wattrset(g.mainwin, COLOR_PAIR(WHITE_YELLOW));
+		(void)wprintw(g.mainwin, "P");
+		(void)wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		(void)wprintw(g.mainwin, " Present in RAM, ");
+		(void)wattrset(g.mainwin, COLOR_PAIR(WHITE_CYAN));
+		(void)wprintw(g.mainwin, "D");
+		(void)wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		(void)wprintw(g.mainwin, " Dirty, ");
+		(void)wattrset(g.mainwin, COLOR_PAIR(WHITE_GREEN));
+		(void)wprintw(g.mainwin, "S");
+		(void)wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		(void)wprintw(g.mainwin, " Swap, ");
+		(void)wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
+		(void)wprintw(g.mainwin, ".");
+		(void)wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		(void)wprintw(g.mainwin, " not in RAM");
+		(void)wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE) | A_BOLD);
 	} else {
-		wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		mvwprintw(g.mainwin, LINES - 1, 0, "%-*s", COLS, "Memory View");
+		(void)wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		(void)mvwprintw(g.mainwin, LINES - 1, 0, "%-*s", COLS, "Memory View");
 	}
 }
 
@@ -996,40 +997,40 @@ static inline void show_help(void)
 	const int x = (COLS - 45) / 2;
 	int y = (LINES - 15) / 2;
 
-	wattrset(g.mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
-	mvwprintw(g.mainwin, y++,  x,
+	(void)wattrset(g.mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
+	(void)mvwprintw(g.mainwin, y++,  x,
 		" Pagemon Process Memory Monitor Quick Help ");
-	mvwprintw(g.mainwin, y++,  x,
+	(void)mvwprintw(g.mainwin, y++,  x,
 		"%43s", "");
-	mvwprintw(g.mainwin, y++,  x,
+	(void)mvwprintw(g.mainwin, y++,  x,
 		" ? or h     This help information%10s", "");
-	mvwprintw(g.mainwin, y++,  x,
+	(void)mvwprintw(g.mainwin, y++,  x,
 		" Esc or q   Quit%27s", "");
-	mvwprintw(g.mainwin, y++,  x,
+	(void)mvwprintw(g.mainwin, y++,  x,
 		" Tab        Toggle page information%8s", "");
-	mvwprintw(g.mainwin, y++,  x,
+	(void)mvwprintw(g.mainwin, y++,  x,
 		" Enter      Toggle map/memory views%8s", "");
-	mvwprintw(g.mainwin, y++,  x,
+	(void)mvwprintw(g.mainwin, y++,  x,
 		" + or z     Zoom in memory map%13s", "");
-	mvwprintw(g.mainwin, y++,  x,
+	(void)mvwprintw(g.mainwin, y++,  x,
 		" - or Z     Zoom out memory map%12s", "");
-	mvwprintw(g.mainwin, y++,  x,
+	(void)mvwprintw(g.mainwin, y++,  x,
 		" R or r     Read pages (swap in all pages) ");
-	mvwprintw(g.mainwin, y++,  x,
+	(void)mvwprintw(g.mainwin, y++,  x,
 		" A or a     Toggle Auto Zoom on/off        ");
-	mvwprintw(g.mainwin, y++,  x,
+	(void)mvwprintw(g.mainwin, y++,  x,
 		" V or v     Toggle Virtual Memory Stats    ");
 #if defined(PERF_ENABLED)
-	mvwprintw(g.mainwin, y++,  x,
+	(void)mvwprintw(g.mainwin, y++,  x,
 		" P or p     Toggle Perf Page Stats         ");
 #endif
-	mvwprintw(g.mainwin, y++,  x,
+	(void)mvwprintw(g.mainwin, y++,  x,
 		" PgUp/Down  Scroll up/down 1/2 page%8s", "");
-	mvwprintw(g.mainwin, y++, x,
+	(void)mvwprintw(g.mainwin, y++, x,
 		" Home/End   Move cursor back to top/bottom ");
-	mvwprintw(g.mainwin, y, x,
+	(void)mvwprintw(g.mainwin, y, x,
 		" [ / ]      Zoom 1 / Zoom 999              ");
-	mvwprintw(g.mainwin, y, x,
+	(void)mvwprintw(g.mainwin, y, x,
 		" Cursor keys move Up/Down/Left/Right%7s", "");
 }
 
@@ -1143,16 +1144,16 @@ int main(int argc, char **argv)
 		}
 	}
 	if (!(g.opt_flags & OPT_FLAG_PID)) {
-		fprintf(stderr, "Must provide process ID with -p option\n");
+		(void)fprintf(stderr, "Must provide process ID with -p option\n");
 		exit(EXIT_FAILURE);
 	}
 	if (geteuid() != 0) {
-		fprintf(stderr, "%s requires root privileges to "
+		(void)fprintf(stderr, "%s requires root privileges to "
 			"access memory of pid %d\n", APP_NAME, g.pid);
 		exit(EXIT_FAILURE);
 	}
 	if (kill(g.pid, 0) < 0) {
-		fprintf(stderr, "No such process %d\n", g.pid);
+		(void)fprintf(stderr, "No such process %d\n", g.pid);
 		exit(EXIT_FAILURE);
 	}
 	g.page_size = sysconf(_SC_PAGESIZE);
@@ -1161,13 +1162,13 @@ int main(int argc, char **argv)
 		g.page_size = 4096UL;
 	}
 	g.max_pages = ((addr_t)((size_t)~0)) / g.page_size;
-	memset(&action, 0, sizeof(action));
+	(void)memset(&action, 0, sizeof(action));
 	action.sa_handler = handle_winch;
 	if (sigaction(SIGWINCH, &action, NULL) < 0) {
 		fprintf(stderr, "Could not set up window resizing handler\n");
 		exit(EXIT_FAILURE);
 	}
-	memset(&action, 0, sizeof(action));
+	(void)memset(&action, 0, sizeof(action));
 	action.sa_handler = handle_terminate;
 	if (sigaction(SIGSEGV, &action, NULL) < 0) {
 		fprintf(stderr, "Could not set up error handler\n");
@@ -1178,43 +1179,43 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	snprintf(g.path_refs, sizeof(g.path_refs),
+	(void)snprintf(g.path_refs, sizeof(g.path_refs),
 		"/proc/%i/clear_refs", g.pid);
-	snprintf(g.path_pagemap, sizeof(g.path_pagemap),
+	(void)snprintf(g.path_pagemap, sizeof(g.path_pagemap),
 		"/proc/%i/pagemap", g.pid);
-	snprintf(g.path_maps, sizeof(g.path_maps),
+	(void)snprintf(g.path_maps, sizeof(g.path_maps),
 		"/proc/%i/maps", g.pid);
-	snprintf(g.path_mem, sizeof(g.path_mem),
+	(void)snprintf(g.path_mem, sizeof(g.path_mem),
 		"/proc/%i/mem", g.pid);
-	snprintf(g.path_status, sizeof(g.path_status),
+	(void)snprintf(g.path_status, sizeof(g.path_status),
 		"/proc/%i/status", g.pid);
-	snprintf(g.path_stat, sizeof(g.path_stat),
+	(void)snprintf(g.path_stat, sizeof(g.path_stat),
 		"/proc/%i/stat", g.pid);
-	snprintf(g.path_oom, sizeof(g.path_stat),
+	(void)snprintf(g.path_oom, sizeof(g.path_stat),
 		"/proc/%i/oom_score", g.pid);
 
-	initscr();
-	start_color();
-	cbreak();
-	noecho();
-	nodelay(stdscr, 1);
-	keypad(stdscr, 1);
-	curs_set(0);
+	(void)initscr();
+	(void)start_color();
+	(void)cbreak();
+	(void)noecho();
+	(void)nodelay(stdscr, 1);
+	(void)keypad(stdscr, 1);
+	(void)curs_set(0);
 	g.mainwin = newwin(LINES, COLS, 0, 0);
 	g.curses_started = true;
 
-	init_pair(WHITE_RED, COLOR_WHITE, COLOR_RED);
-	init_pair(WHITE_BLUE, COLOR_WHITE, COLOR_BLUE);
-	init_pair(WHITE_YELLOW, COLOR_WHITE, COLOR_YELLOW);
-	init_pair(WHITE_CYAN, COLOR_WHITE, COLOR_CYAN);
-	init_pair(WHITE_GREEN, COLOR_WHITE, COLOR_GREEN);
-	init_pair(WHITE_BLACK, COLOR_WHITE, COLOR_BLACK);
-	init_pair(BLACK_WHITE, COLOR_BLACK, COLOR_WHITE);
-	init_pair(RED_BLUE, COLOR_RED, COLOR_BLUE);
-	init_pair(BLACK_BLACK, COLOR_BLACK, COLOR_BLACK);
-	init_pair(BLUE_WHITE, COLOR_BLUE, COLOR_WHITE);
+	(void)init_pair(WHITE_RED, COLOR_WHITE, COLOR_RED);
+	(void)init_pair(WHITE_BLUE, COLOR_WHITE, COLOR_BLUE);
+	(void)init_pair(WHITE_YELLOW, COLOR_WHITE, COLOR_YELLOW);
+	(void)init_pair(WHITE_CYAN, COLOR_WHITE, COLOR_CYAN);
+	(void)init_pair(WHITE_GREEN, COLOR_WHITE, COLOR_GREEN);
+	(void)init_pair(WHITE_BLACK, COLOR_WHITE, COLOR_BLACK);
+	(void)init_pair(BLACK_WHITE, COLOR_BLACK, COLOR_WHITE);
+	(void)init_pair(RED_BLUE, COLOR_RED, COLOR_BLUE);
+	(void)init_pair(BLACK_BLACK, COLOR_BLACK, COLOR_BLACK);
+	(void)init_pair(BLUE_WHITE, COLOR_BLUE, COLOR_WHITE);
 
-	memset(position, 0, sizeof(position));
+	(void)memset(position, 0, sizeof(position));
 	update_xymax(position, 0);
 	update_xymax(position, 1);
 
@@ -1283,12 +1284,12 @@ int main(int argc, char **argv)
 				break;
 			}
 
-			resizeterm(newy, newx);
-			wresize(g.mainwin, newy, newx);
-			wrefresh(g.mainwin);
-			refresh();
+			(void)resizeterm(newy, newx);
+			(void)wresize(g.mainwin, newy, newx);
+			(void)wrefresh(g.mainwin);
+			(void)refresh();
 
-			wbkgd(g.mainwin, COLOR_PAIR(RED_BLUE));
+			(void)wbkgd(g.mainwin, COLOR_PAIR(RED_BLUE));
 			g.resized = false;
 			p->xpos = 0;
 			p->ypos = 0;
@@ -1299,19 +1300,19 @@ int main(int argc, char **argv)
 		 *  Window getting too small, tell user
 		 */
 		if ((COLS < 80) || (LINES < 23)) {
-			wclear(g.mainwin);
-			wbkgd(g.mainwin, COLOR_PAIR(RED_BLUE));
-			wattrset(g.mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
-			mvwprintw(g.mainwin, LINES / 2, (COLS / 2) - 8,
+			(void)wclear(g.mainwin);
+			(void)wbkgd(g.mainwin, COLOR_PAIR(RED_BLUE));
+			(void)wattrset(g.mainwin, COLOR_PAIR(WHITE_RED) | A_BOLD);
+			(void)mvwprintw(g.mainwin, LINES / 2, (COLS / 2) - 8,
 				" WINDOW TOO SMALL ");
-			wrefresh(g.mainwin);
-			refresh();
-			usleep(udelay);
+			(void)wrefresh(g.mainwin);
+			(void)refresh();
+			(void)usleep(udelay);
 			continue;
 		}
 
 		update_xymax(position, g.view);
-		wbkgd(g.mainwin, COLOR_PAIR(RED_BLUE));
+		(void)wbkgd(g.mainwin, COLOR_PAIR(RED_BLUE));
 		show_key();
 
 		blink++;
@@ -1339,19 +1340,19 @@ int main(int argc, char **argv)
 			blink_attrs = A_BOLD | ((blink & BLINK_MASK) ?
 				COLOR_PAIR(WHITE_BLUE) :
 				COLOR_PAIR(BLUE_WHITE));
-			wattrset(g.mainwin, blink_attrs);
+			(void)wattrset(g.mainwin, blink_attrs);
 			cursor_ch = mvwinch(g.mainwin, p->ypos + 1, curxpos)
 				& A_CHARTEXT;
-			mvwprintw(g.mainwin, p->ypos + 1, curxpos,
+			(void)mvwprintw(g.mainwin, p->ypos + 1, curxpos,
 				"%c", cursor_ch);
 			blink_attrs = A_BOLD | ((blink & BLINK_MASK) ?
 				COLOR_PAIR(BLACK_WHITE) :
 				COLOR_PAIR(WHITE_BLACK));
 			curxpos = ADDR_OFFSET + (p->xmax * 3) + p->xpos;
-			wattrset(g.mainwin, blink_attrs);
+			(void)wattrset(g.mainwin, blink_attrs);
 			cursor_ch = mvwinch(g.mainwin, p->ypos + 1, curxpos)
 				& A_CHARTEXT;
-			mvwprintw(g.mainwin, p->ypos + 1, curxpos,
+			(void)mvwprintw(g.mainwin, p->ypos + 1, curxpos,
 				"%c", cursor_ch);
 		} else {
 			int32_t curxpos = p->xpos + ADDR_OFFSET;
@@ -1374,10 +1375,10 @@ int main(int argc, char **argv)
 			blink_attrs = A_BOLD | ((blink & BLINK_MASK) ?
 				COLOR_PAIR(BLACK_WHITE) :
 				COLOR_PAIR(WHITE_BLACK));
-			wattrset(g.mainwin, blink_attrs);
+			(void)wattrset(g.mainwin, blink_attrs);
 			cursor_ch = mvwinch(g.mainwin, p->ypos + 1, curxpos)
 				& A_CHARTEXT;
-			mvwprintw(g.mainwin, p->ypos + 1, curxpos,
+			(void)mvwprintw(g.mainwin, p->ypos + 1, curxpos,
 				"%c", cursor_ch);
 		}
 		ch = getch();
@@ -1385,29 +1386,29 @@ int main(int argc, char **argv)
 		if (g.help_view)
 			show_help();
 
-		wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
+		(void)wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
 		banner(0);
 		if (!map) {
-			mvwprintw(g.mainwin, 0, 0,
+			(void)mvwprintw(g.mainwin, 0, 0,
 				"Pagemon 0x---------------- %4.4s x %-3d ",
 				g.auto_zoom && ((blink & BLINK_MASK)) ?
 				"Auto" : "Zoom", zoom);
-			wprintw(g.mainwin, "---- --:-- %-20.20s",
+			(void)wprintw(g.mainwin, "---- --:-- %-20.20s",
 				"[Not Mapped]");
 		} else {
-			mvwprintw(g.mainwin, 0, 0, "Pagemon 0x%16.16" PRIx64
+			(void)mvwprintw(g.mainwin, 0, 0, "Pagemon 0x%16.16" PRIx64
 				" %4.4s x %-3d ", show_addr,
 				g.auto_zoom && ((blink & BLINK_MASK)) ?
 					"Auto" : "Zoom", zoom);
-			wprintw(g.mainwin, "%s %s %-20.20s",
+			(void)wprintw(g.mainwin, "%s %s %-20.20s",
 				map->attr, map->dev,
 				map->name[0] == '\0' ?
 					"[Anonymous]" : basename(map->name));
 		}
-		mvwprintw(g.mainwin, 0, COLS - 8, " %6.1f%%", percent);
+		(void)mvwprintw(g.mainwin, 0, COLS - 8, " %6.1f%%", percent);
 
-		wrefresh(g.mainwin);
-		refresh();
+		(void)wrefresh(g.mainwin);
+		(void)refresh();
 force_ch:
 		prev_page_index = page_index;
 		prev_data_index = data_index;
@@ -1663,18 +1664,18 @@ force_ch:
 
 		if (kill(g.pid, 0) < 0)
 			break;
-		usleep(udelay);
+		(void)usleep(udelay);
 	}
 
-	werase(g.mainwin);
-	wrefresh(g.mainwin);
-	refresh();
-	delwin(g.mainwin);
+	(void)werase(g.mainwin);
+	(void)wrefresh(g.mainwin);
+	(void)refresh();
+	(void)delwin(g.mainwin);
 
 terminate:
 	if (g.curses_started) {
-		clear();
-		endwin();
+		(void)clear();
+		(void)endwin();
 	}
 
 #if defined(PERF_ENABLED)
@@ -1688,36 +1689,36 @@ terminate:
 		ret = EXIT_SUCCESS;
 		break;
 	case ERR_NO_MAP_INFO:
-		fprintf(stderr, "Cannot access memory maps for PID %d\n", g.pid);
+		(void)fprintf(stderr, "Cannot access memory maps for PID %d\n", g.pid);
 		break;
 	case ERR_NO_MEM_INFO:
-		fprintf(stderr, "Cannot access memory for PID %d\n", g.pid);
+		(void)fprintf(stderr, "Cannot access memory for PID %d\n", g.pid);
 		break;
 	case ERR_SMALL_WIN:
-		fprintf(stderr, "Window too small\n");
+		(void)fprintf(stderr, "Window too small\n");
 		break;
 	case ERR_ALLOC_NOMEM:
-		fprintf(stderr, "Memory allocation failed\n");
+		(void)fprintf(stderr, "Memory allocation failed\n");
 		break;
 	case ERR_TOO_MANY_PAGES:
-		fprintf(stderr, "Too many pages in process for %s\n", APP_NAME);
-		printf("%" PRIu64 " vs %" PRIu64 "\n",
+		(void)fprintf(stderr, "Too many pages in process for %s\n", APP_NAME);
+		(void)printf("%" PRIu64 " vs %" PRIu64 "\n",
 			g.mem_info.npages , g.max_pages);
 		break;
 	case ERR_TOO_FEW_PAGES:
-		fprintf(stderr, "Too few pages in process for %s\n", APP_NAME);
+		(void)fprintf(stderr, "Too few pages in process for %s\n", APP_NAME);
 		break;
 	case ERR_RESIZE_FAIL:
-		fprintf(stderr, "Cannot get window size after a resize event\n");
+		(void)fprintf(stderr, "Cannot get window size after a resize event\n");
 		break;
 	case ERR_NO_PROCESS:
-		fprintf(stderr, "Process %d exited\n", g.pid);
+		(void)fprintf(stderr, "Process %d exited\n", g.pid);
 		break;
 	case ERR_FAULT:
-		fprintf(stderr, "Internal error, segmentation fault or bus error\n");
+		(void)fprintf(stderr, "Internal error, segmentation fault or bus error\n");
 		break;
 	default:
-		fprintf(stderr, "Unknown failure (%d)\n", rc);
+		(void)fprintf(stderr, "Unknown failure (%d)\n", rc);
 		break;
 	}
 	exit(ret);

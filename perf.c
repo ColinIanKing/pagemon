@@ -51,7 +51,7 @@ perf_type_tracepoint_resolve_config(const char *path)
 	unsigned long config;
 	FILE *fp;
 
-	snprintf(perf_path, sizeof(perf_path),
+	(void)snprintf(perf_path, sizeof(perf_path),
 		"/sys/kernel/debug/tracing/events/%s/id", path);
 	if ((fp = fopen(perf_path, "r")) == NULL)
 		return UNRESOLVED;
@@ -59,7 +59,7 @@ perf_type_tracepoint_resolve_config(const char *path)
 		fclose(fp);
 		return UNRESOLVED;
 	}
-	fclose(fp);
+	(void)fclose(fp);
 
 	return config;
 }
@@ -74,7 +74,7 @@ int perf_start(perf_t *p, const pid_t pid)
 	for (i = 0; i < PERF_MAX; i++) {
 		struct perf_event_attr attr;
 
-		memset(&attr, 0, sizeof(attr));
+		(void)memset(&attr, 0, sizeof(attr));
 		attr.type = PERF_TYPE_TRACEPOINT;
 		attr.config = perf_type_tracepoint_resolve_config(perf_tp_info[i].path);
 		attr.disabled = 1;
