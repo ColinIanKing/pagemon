@@ -212,7 +212,7 @@ static global_t g;
  *  mem_to_str()
  *	report memory in different units
  */
-static void mem_to_str(const addr_t addr, char *buf, const size_t buflen)
+static void mem_to_str(const addr_t addr, char *const buf, const size_t buflen)
 {
 	uint64_t scaled, val = (uint64_t)addr;
 	char unit;
@@ -240,7 +240,7 @@ static void mem_to_str(const addr_t addr, char *buf, const size_t buflen)
  */
 static int read_buf(
 	const char *path,
-	char *buffer,
+	char *const buffer,
 	const size_t sz)
 {
 	int fd;
@@ -326,8 +326,8 @@ static pid_t proc_name_to_pid(char *const name)
  *	read minor and major page faults
  */
 static int read_faults(
-	uint64_t *minor_flt,
-	uint64_t *major_flt)
+	uint64_t *const minor_flt,
+	uint64_t *const major_flt)
 {
 	int count = 0;
 	char buf[4096], *ptr = buf;
@@ -362,7 +362,7 @@ static int read_faults(
  *  read_oom_score()
  *	read the process oom score
  */
-static int read_oom_score(uint64_t *score)
+static int read_oom_score(uint64_t *const score)
 {
 	char buf[4096];
 
@@ -632,7 +632,7 @@ static void show_vm(void)
  */
 static void show_page_bits(
 	const int fd,
-	map_t *map,
+	map_t *const map,
 	const index_t index)
 {
 	pagemap_t pagemap_info;
@@ -723,7 +723,7 @@ static inline void banner(const int y)
 static int show_pages(
 	const index_t cursor_index,
 	const index_t page_index,
-	const position_t *p,
+	const position_t *const p,
 	const int32_t zoom)
 {
 	int32_t i;
@@ -842,7 +842,7 @@ static int show_pages(
 static int show_memory(
 	const index_t page_index,
 	index_t data_index,
-	const position_t *p)
+	const position_t *const p)
 {
 	addr_t addr;
 	index_t index = page_index;
@@ -1040,7 +1040,7 @@ static inline void show_help(void)
  *	based on column width and scaling factor for
  *	page or mem (hex) views
  */
-static inline void update_xymax(position_t *position, int v)
+static inline void update_xymax(position_t *const position, const int v)
 {
 	static const int32_t xmax_scale[] = {
 		1,	/* VIEW_PAGE */
@@ -1056,9 +1056,9 @@ static inline void update_xymax(position_t *position, int v)
  *	reset to home position
  */
 static inline void reset_cursor(
-	position_t *p,
-	index_t *data_index,
-	index_t *page_index)
+	position_t *const p,
+	index_t *const data_index,
+	index_t *const page_index)
 {
 	p->xpos = 0;
 	p->ypos = 0;
