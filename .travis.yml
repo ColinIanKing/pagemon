@@ -1,0 +1,16 @@
+dist: bionic
+sudo: required
+
+matrix:
+    include:
+        - env: PEDANTIC=1
+
+before_install:
+    - sudo apt-get update -q
+    - sudo apt-get install build-essential
+    - sudo apt-get install libncurses5-dev
+
+language: c
+
+script:
+- make -j2 PEDANTIC=$PEDANTIC
