@@ -633,7 +633,7 @@ static void show_vm(void)
 static void show_page_bits(
 	const int fd,
 	map_t *const map,
-	const index_t index)
+	const index_t idx)
 {
 	pagemap_t pagemap_info;
 	off_t offset;
@@ -644,7 +644,7 @@ static void show_page_bits(
 	(void)wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
 	(void)mvwprintw(g.mainwin, 2, x,
 		" Page:      0x%16.16" PRIx64 "%18s",
-		g.mem_info.pages[index].addr, "");
+		g.mem_info.pages[idx].addr, "");
 	(void)mvwprintw(g.mainwin, 3, x,
 		" Page Size: 0x%8.8" PRIx32 " bytes%20s",
 		g.page_size, "");
@@ -664,7 +664,7 @@ static void show_page_bits(
 			"[Anonymous]" : basename(map->name));
 
 	offset = sizeof(pagemap_t) *
-		(g.mem_info.pages[index].addr / g.page_size);
+		(g.mem_info.pages[idx].addr / g.page_size);
 	if (lseek(fd, offset, SEEK_SET) == (off_t)-1)
 		return;
 	if (read(fd, &pagemap_info, sizeof(pagemap_info)) != sizeof(pagemap_info))
@@ -727,7 +727,7 @@ static int show_pages(
 	const int32_t zoom)
 {
 	int32_t i;
-	index_t index;
+	index_t idx;
 	const uint32_t shift = ((uint32_t)(8 * sizeof(pagemap_t) - 4 -
 		__builtin_clzll((g.page_size))));
 	int fd;
@@ -738,17 +738,17 @@ static int show_pages(
 	if ((fd = open(g.path_pagemap, O_RDONLY)) < 0)
 		return ERR_NO_MAP_INFO;
 
-	index = page_index;
+	idx = page_index;
 	for (i = 1; i <= ymax; i++) {
 		int32_t j;
 		addr_t addr, offset;
 		const size_t sz = sizeof(pagemap_info_buf);
 
-		if (index >= (index_t)g.mem_info.npages) {
+		if (idx >= (index_t)g.mem_info.npages) {
 			(void)wattrset(g.mainwin, COLOR_PAIR(BLACK_BLACK));
 			(void)mvwprintw(g.mainwin, i, 0, "---------------- ");
 		} else {
-			addr = g.mem_info.pages[index].addr;
+			addr = g.mem_info.pages[idx].addr;
 			(void)wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
 			(void)mvwprintw(g.mainwin, i, 0, "%16.16" PRIx64 " ", addr);
 		}
@@ -756,8 +756,8 @@ static int show_pages(
 		/*
 		 *  Slurp up an entire row
 		 */
-		addr = g.mem_info.pages[index].addr;
-		map = g.mem_info.pages[index].map;
+		addr = g.mem_info.pages[idx].addr;
+		map = g.mem_info.pages[idx].map;
 		offset = (addr >> shift) & ~7ULL;
 
 		(void)memset(pagemap_info_buf, 0, sz);
@@ -770,21 +770,21 @@ static int show_pages(
 			char state = '.';
 			int attr = COLOR_PAIR(BLACK_WHITE);
 
-			if (index >= (index_t)g.mem_info.npages) {
+			if (idx >= (index_t)g.mem_info.npages) {
 				attr = COLOR_PAIR(BLACK_BLACK);
 				state = '~';
 			} else {
 				map_t *new_map;
 				register pagemap_t pagemap_info;
 
-				new_map = g.mem_info.pages[index].map;
+				new_map = g.mem_info.pages[idx].map;
 				/*
 				 *  On a different mapping? If so, slurp up
 				 *  the new mappings from here to end
 				 */
 				if (new_map != map) {
 					map = new_map;
-					addr = g.mem_info.pages[index].addr;
+					addr = g.mem_info.pages[idx].addr;
 					offset = (addr >> shift) & ~7;
 					if (lseek(fd, offset, SEEK_SET) == (off_t)-1)
 						break;
@@ -793,7 +793,7 @@ static int show_pages(
 						break;
 				}
 
-				__builtin_prefetch(&g.mem_info.pages[index + zoom].addr, 1, 1);
+				__builtin_prefetch(&g.mem_info.pages[idx + zoom].addr, 1, 1);
 
 				pagemap_info = pagemap_info_buf[j];
 				attr = COLOR_PAIR(BLACK_WHITE);
@@ -813,7 +813,7 @@ static int show_pages(
 					attr = COLOR_PAIR(WHITE_CYAN);
 					state = 'D';
 				}
-				index += zoom;
+				idx += zoom;
 			}
 			(void)wattrset(g.mainwin, attr);
 			(void)mvwprintw(g.mainwin, i, ADDR_OFFSET + j, "%c", state);
@@ -845,7 +845,7 @@ static int show_memory(
 	const position_t *const p)
 {
 	addr_t addr;
-	index_t index = page_index;
+	index_t idx = page_index;
 	int32_t i;
 	const int32_t xmax = p->xmax, ymax = p->ymax;
 	int fd;
@@ -858,7 +858,7 @@ static int show_memory(
 		uint8_t bytes[xmax];
 		ssize_t nread = 0;
 
-		addr = g.mem_info.pages[index].addr + data_index;
+		addr = g.mem_info.pages[idx].addr + data_index;
 		if (lseek(fd, (off_t)addr, SEEK_SET) == (off_t)-1) {
 			nread = -1;
 		} else {
@@ -868,7 +868,7 @@ static int show_memory(
 		}
 
 		(void)wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
-		if (index >= (index_t)g.mem_info.npages)
+		if (idx >= (index_t)g.mem_info.npages)
 			mvwprintw(g.mainwin, i, 0, "---------------- ");
 		else
 			mvwprintw(g.mainwin, i, 0, "%16.16" PRIx64 " ", addr);
@@ -876,8 +876,8 @@ static int show_memory(
 
 		for (j = 0; j < xmax; j++) {
 			uint8_t byte;
-			addr = g.mem_info.pages[index].addr + data_index;
-			if ((index >= (index_t)g.mem_info.npages) ||
+			addr = g.mem_info.pages[idx].addr + data_index;
+			if ((idx >= (index_t)g.mem_info.npages) ||
 			    (addr > g.mem_info.last_addr)) {
 				/* End of memory */
 				(void)wattrset(g.mainwin, COLOR_PAIR(BLACK_BLACK));
@@ -914,7 +914,7 @@ do_border:
 			data_index++;
 			if (data_index >= g.page_size) {
 				data_index -= g.page_size;
-				index++;
+				idx++;
 			}
 		}
 	}
@@ -932,13 +932,13 @@ do_border:
 static int read_all_pages(void)
 {
 	int fd;
-	index_t index;
+	index_t idx;
 
 	if ((fd = open(g.path_mem, O_RDONLY)) < 0)
 		return ERR_NO_MEM_INFO;
 
-	for (index = 0; index < (index_t)g.mem_info.npages; index++) {
-		const off_t addr = g.mem_info.pages[index].addr;
+	for (idx = 0; idx < (index_t)g.mem_info.npages; idx++) {
+		const off_t addr = g.mem_info.pages[idx].addr;
 		uint8_t byte;
 
 		if (lseek(fd, addr, SEEK_SET) == (off_t)-1)
