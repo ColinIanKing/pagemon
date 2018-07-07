@@ -639,6 +639,7 @@ static void show_page_bits(
 	off_t offset;
 	char buf[16];
 	const int x = 2;
+	int kfd;
 
 	mem_to_str(map->end - map->begin, buf, sizeof(buf) - 1);
 	(void)wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
@@ -705,6 +706,24 @@ static void show_page_bits(
 	(void)mvwprintw(g.mainwin, 16, x,
 		" Present in RAM:      %3s%23s",
 		(pagemap_info & PAGE_PRESENT) ? "Yes" : "No ", "");
+
+	kfd = open("/proc/kpagecount", O_RDONLY);
+	if (kfd > -1) {
+		uint64_t count;
+
+		offset = sizeof(count) *
+			(pagemap_info & 0x00ffffffffffffffULL);
+
+		if (lseek(kfd, offset, SEEK_SET) == (off_t)-1)
+			goto close_kfd;
+		if (read(kfd, &count, sizeof(count)) != sizeof(count)) 
+			goto close_kfd;
+		(void)mvwprintw(g.mainwin, 16, x,
+			" KPageCount:          %-10" PRIu64 "%13s", count, "");
+		
+close_kfd:
+		(void)close(kfd);
+	}
 }
 
 /*
