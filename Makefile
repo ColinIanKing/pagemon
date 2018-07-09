@@ -51,7 +51,7 @@ pagemon.8.gz: pagemon.8
 dist:
 	rm -rf pagemon-$(VERSION)
 	mkdir pagemon-$(VERSION)
-	cp -rp README Makefile pagemon.c pagemon.8 perf.c perf.h COPYING pagemon-$(VERSION)
+	cp -rp README Makefile pagemon.c pagemon.8 perf.c perf.h COPYING .travis.yml pagemon-$(VERSION)
 	tar -zcf pagemon-$(VERSION).tar.gz pagemon-$(VERSION)
 	rm -rf pagemon-$(VERSION)
 
