@@ -1,3 +1,16 @@
+pagemon (0.01.14-1) unstable; urgency=medium
+
+  * Makefile: remove .xz tarball on make clean rule
+  * debian/watch: change watch file to check for .xz
+  * Makefile: use xz compression for tarball
+  * Add .travis.yml to make dist rule
+  * Makefile: bump version
+  * Add kpage count stats
+  * Rename idx to avoid name shadowing with global function index
+  * Add travis yaml file
+
+ -- Colin King <colin.king@canonical.com>  Mon, 9 Jul 2018 08:35:37 +0100
+
 pagemon (0.01.13-1) unstable; urgency=medium
 
   * Makefile: bump version
