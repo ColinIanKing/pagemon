@@ -451,7 +451,7 @@ static int read_maps(const bool force)
 		if (n >= MAX_MAPS)
 			break;
 	}
-	fclose(fp);
+	(void)fclose(fp);
 
 	checksum += g.mem_info.npages;
 	checksum += n;
@@ -510,14 +510,13 @@ static void handle_winch(int sig)
 static void handle_terminate(int sig)
 {
 	static bool already_handled = false;
+
 	(void)sig;
 
-	if (already_handled) {
+	if (already_handled)
 		exit(EXIT_FAILURE);
-	}
 
 	g.terminate = true;
-
 	siglongjmp(g.env, 1);
 }
 
@@ -558,7 +557,7 @@ static void show_perf(void)
 		perf_start(&g.perf, g.pid);
 		perf_ticker = 0;
 	}
-	wattrset(g.mainwin, COLOR_PAIR(WHITE_CYAN) | A_BOLD);
+	(void)wattrset(g.mainwin, COLOR_PAIR(WHITE_CYAN) | A_BOLD);
 	(void)mvwprintw(g.mainwin, y + 0, x,
 		" Page Faults (User Space):   %15" PRIu64 " ",
 		perf_counter(&g.perf, PERF_TP_PAGE_FAULT_USER));
@@ -598,7 +597,7 @@ static void show_vm(void)
 		uint64_t sz;
 
 		if (sscanf(buffer, "State: %5s %12s", state, longstate) == 2) {
-			mvwprintw(g.mainwin, y++, x,
+			(void)mvwprintw(g.mainwin, y++, x,
 				" State:    %-12.12s ", longstate);
 			continue;
 		}
@@ -683,11 +682,11 @@ static void show_page_bits(
 	} else {
 		(void)mvwprintw(g.mainwin, 10, x, "%48s", "");
 		if (pagemap_info & PAGE_PRESENT) {
-			mvwprintw(g.mainwin, 11, x,
+			(void)mvwprintw(g.mainwin, 11, x,
 				" Physical Address:    0x%16.16" PRIx64 "%8s",
 				(pagemap_info & 0x00ffffffffffffffULL) * g.page_size, "");
 		} else {
-			mvwprintw(g.mainwin, 11, x,
+			(void)mvwprintw(g.mainwin, 11, x,
 				" Physical Address:    0x----------------%8s", "");
 		}
 	}
@@ -888,13 +887,14 @@ static int show_memory(
 
 		(void)wattrset(g.mainwin, COLOR_PAIR(BLACK_WHITE));
 		if (idx >= (index_t)g.mem_info.npages)
-			mvwprintw(g.mainwin, i, 0, "---------------- ");
+			(void)mvwprintw(g.mainwin, i, 0, "---------------- ");
 		else
-			mvwprintw(g.mainwin, i, 0, "%16.16" PRIx64 " ", addr);
+			(void)mvwprintw(g.mainwin, i, 0, "%16.16" PRIx64 " ", addr);
 		(void)mvwprintw(g.mainwin, i, COLS - 3, "   ");
 
 		for (j = 0; j < xmax; j++) {
 			uint8_t byte;
+
 			addr = g.mem_info.pages[idx].addr + data_index;
 			if ((idx >= (index_t)g.mem_info.npages) ||
 			    (addr > g.mem_info.last_addr)) {
@@ -1123,7 +1123,7 @@ int main(int argc, char **argv)
 		case 'd':
 			udelay = strtoul(optarg, NULL, 10);
 			if (errno) {
-				fprintf(stderr, "Invalid delay value\n");
+				(void)fprintf(stderr, "Invalid delay value\n");
 				exit(EXIT_FAILURE);
 			}
 			break;
@@ -1143,7 +1143,7 @@ int main(int argc, char **argv)
 		case 't':
 			ticks = strtol(optarg, NULL, 10);
 			if ((ticks < MIN_TICKS) || (ticks > MAX_TICKS)) {
-				fprintf(stderr, "Invalid ticks value\n");
+				(void)fprintf(stderr, "Invalid ticks value\n");
 				exit(EXIT_FAILURE);
 			}
 			break;
@@ -1153,7 +1153,7 @@ int main(int argc, char **argv)
 		case 'z':
 			zoom = strtoul(optarg, NULL, 10);
 			if (errno || (zoom < MIN_ZOOM) || (zoom > MAX_ZOOM)) {
-				fprintf(stderr, "Invalid zoom value\n");
+				(void)fprintf(stderr, "Invalid zoom value\n");
 				exit(EXIT_FAILURE);
 			}
 			break;
@@ -1184,17 +1184,17 @@ int main(int argc, char **argv)
 	(void)memset(&action, 0, sizeof(action));
 	action.sa_handler = handle_winch;
 	if (sigaction(SIGWINCH, &action, NULL) < 0) {
-		fprintf(stderr, "Could not set up window resizing handler\n");
+		(void)fprintf(stderr, "Could not set up window resizing handler\n");
 		exit(EXIT_FAILURE);
 	}
 	(void)memset(&action, 0, sizeof(action));
 	action.sa_handler = handle_terminate;
 	if (sigaction(SIGSEGV, &action, NULL) < 0) {
-		fprintf(stderr, "Could not set up error handler\n");
+		(void)fprintf(stderr, "Could not set up error handler\n");
 		exit(EXIT_FAILURE);
 	}
 	if (sigaction(SIGBUS, &action, NULL) < 0) {
-		fprintf(stderr, "Could not set up error handler\n");
+		(void)fprintf(stderr, "Could not set up error handler\n");
 		exit(EXIT_FAILURE);
 	}
 
