@@ -378,7 +378,7 @@ static int read_oom_score(uint64_t *const score)
 
 /*
  *  read_maps()
- *	read memory maps for a specifc process
+ *	read memory maps for a specific process
  */
 static int read_maps(const bool force)
 {
