@@ -1,3 +1,13 @@
+pagemon (0.01.15-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Fix spelling mistake
+  * Update copyright year
+  * Add project page to README
+  * Voidify some function returns and minor code clean up
+
+ -- Colin King <colin.king@canonical.com>  Sat, 6 Jul 2019 21:06:23 +0100
+
 pagemon (0.01.14-1) unstable; urgency=medium
 
   * Makefile: remove .xz tarball on make clean rule
