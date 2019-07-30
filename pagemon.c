@@ -678,13 +678,13 @@ static void show_page_bits(
 			pagemap_info & 0x1f, "");
 		(void)mvwprintw(g.mainwin, 11, x,
 			" Swap Offset:         0x%16.16" PRIx64 "%8s",
-			(pagemap_info & 0x00ffffffffffffffULL) >> 5, "");
+			(uint64_t)(pagemap_info & 0x00ffffffffffffffULL) >> 5, "");
 	} else {
 		(void)mvwprintw(g.mainwin, 10, x, "%48s", "");
 		if (pagemap_info & PAGE_PRESENT) {
 			(void)mvwprintw(g.mainwin, 11, x,
 				" Physical Address:    0x%16.16" PRIx64 "%8s",
-				(pagemap_info & 0x00ffffffffffffffULL) * g.page_size, "");
+				(uint64_t)(pagemap_info & 0x00ffffffffffffffULL) * g.page_size, "");
 		} else {
 			(void)mvwprintw(g.mainwin, 11, x,
 				" Physical Address:    0x----------------%8s", "");
