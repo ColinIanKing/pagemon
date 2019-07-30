@@ -1,3 +1,10 @@
+pagemon (0.01.16-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Format pagemap_info by casting to uint64_t
+
+ -- Colin King <colin.king@canonical.com>  Tue, 30 Jul 2019 12:55:55 +0100
+
 pagemon (0.01.15-1) unstable; urgency=medium
 
   * Makefile: bump version
