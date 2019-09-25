@@ -774,14 +774,20 @@ static int show_pages(
 		/*
 		 *  Slurp up an entire row
 		 */
-		addr = g.mem_info.pages[idx].addr;
-		map = g.mem_info.pages[idx].map;
-		offset = (addr >> shift) & ~7ULL;
-
 		(void)memset(pagemap_info_buf, 0, sz);
-		if (lseek(fd, offset, SEEK_SET) != (off_t)-1) {
-			ssize_t ret = read(fd, pagemap_info_buf, sz);
-			(void)ret;
+
+		if (idx >= (index_t)g.mem_info.npages) {
+			addr = 0;
+			map = NULL;
+		} else {
+			addr = g.mem_info.pages[idx].addr;
+			map = g.mem_info.pages[idx].map;
+			offset = (addr >> shift) & ~7ULL;
+
+			if (lseek(fd, offset, SEEK_SET) != (off_t)-1) {
+				ssize_t ret = read(fd, pagemap_info_buf, sz);
+				(void)ret;
+			}
 		}
 
 		for (j = 0; j < xmax; j++) {
