@@ -1,3 +1,12 @@
+pagemon (0.01.17-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Debian: update to compat level 12
+  * Fix indexing out-of-range error on g.mem_info.pages when idx
+    is out of range (LP: #1845348)
+
+ -- Colin King <colin.king@canonical.com>  Wed, 25 Sep 2019 16:54:22 +0100
+
 pagemon (0.01.16-1) unstable; urgency=medium
 
   * Makefile: bump version
