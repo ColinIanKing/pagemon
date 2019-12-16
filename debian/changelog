@@ -1,3 +1,10 @@
+pagemon (0.01.18-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Clear up overflow before widening multiplication static analysis warnings
+
+ -- Colin King <colin.king@canonical.com>  Mon, 16 Dec 2019 13:17:19 +0000
+
 pagemon (0.01.17-1) unstable; urgency=medium
 
   * Makefile: bump version
