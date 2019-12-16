@@ -1345,7 +1345,7 @@ int main(int argc, char **argv)
 			int32_t curxpos = (p->xpos * 3) + ADDR_OFFSET;
 			const position_t *pc = &position[VIEW_PAGE];
 			const index_t cursor_index = page_index +
-				zoom * (pc->xpos + (pc->ypos * pc->xmax));
+				zoom * (pc->xpos + ((index_t)pc->ypos * pc->xmax));
 			percent = (g.mem_info.npages > 0) ?
 				100.0 * cursor_index / g.mem_info.npages : 100;
 
@@ -1382,7 +1382,7 @@ int main(int argc, char **argv)
 		} else {
 			int32_t curxpos = p->xpos + ADDR_OFFSET;
 			const index_t cursor_index = page_index +
-				zoom * (p->xpos + (p->ypos * p->xmax));
+				zoom * (p->xpos + ((index_t)p->ypos * p->xmax));
 			percent = (g.mem_info.npages > 0) ?
 				100.0 * cursor_index / g.mem_info.npages : 100;
 
@@ -1646,7 +1646,7 @@ force_ch:
 		if (g.view == VIEW_MEM) {
 			const position_t *pc = &position[VIEW_PAGE];
 			const index_t cursor_index = page_index +
-				zoom * (pc->xpos + (pc->ypos * pc->xmax));
+				zoom * (pc->xpos + ((index_t)pc->ypos * pc->xmax));
 			const addr_t addr =
 				(cursor_index >= (index_t)g.mem_info.npages) ?
 					g.mem_info.last_addr :
