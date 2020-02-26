@@ -1,3 +1,11 @@
+pagemon (0.01.19-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Add bash completion script
+  * Update copyright to 2020
+
+ -- Colin King <colin.king@canonical.com>  Wed, 26 Feb 2020 14:19:22 +0000
+
 pagemon (0.01.18-1) unstable; urgency=medium
 
   * Makefile: bump version
