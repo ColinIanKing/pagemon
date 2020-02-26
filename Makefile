@@ -35,6 +35,7 @@ endif
 
 BINDIR=/usr/sbin
 MANDIR=/usr/share/man/man8
+BASHDIR=/usr/share/bash-completion/completions
 
 SRC = pagemon.c perf.c
 OBJS = $(SRC:.c=.o)
@@ -51,7 +52,8 @@ pagemon.8.gz: pagemon.8
 dist:
 	rm -rf pagemon-$(VERSION)
 	mkdir pagemon-$(VERSION)
-	cp -rp README Makefile pagemon.c pagemon.8 perf.c perf.h COPYING .travis.yml pagemon-$(VERSION)
+	cp -rp README Makefile pagemon.c pagemon.8 perf.c perf.h COPYING \
+		.travis.yml bash-completion pagemon-$(VERSION)
 	tar -Jcf pagemon-$(VERSION).tar.xz pagemon-$(VERSION)
 	rm -rf pagemon-$(VERSION)
 
@@ -63,3 +65,5 @@ install: pagemon pagemon.8.gz
 	cp pagemon ${DESTDIR}${BINDIR}
 	mkdir -p ${DESTDIR}${MANDIR}
 	cp pagemon.8.gz ${DESTDIR}${MANDIR}
+	mkdir -p ${DESTDIR}${BASHDIR}
+	cp bash-completion/pagemon ${DESTDIR}${BASHDIR}
