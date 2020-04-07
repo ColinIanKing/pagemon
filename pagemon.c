@@ -1296,6 +1296,7 @@ int main(int argc, char **argv)
 				zoom * (p->xpos + (p->ypos * p->xmax));
 			struct winsize ws;
 
+			(void)memset(&ws, 0, sizeof(ws));
 			if (ioctl(fileno(stdin), TIOCGWINSZ, &ws) < 0) {
 				rc = ERR_RESIZE_FAIL;
 				break;
