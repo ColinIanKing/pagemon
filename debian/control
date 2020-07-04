@@ -1,9 +1,12 @@
 Source: pagemon
+Rules-Requires-Root: no
 Section: admin
 Priority: optional
 Maintainer: Colin King <colin.king@canonical.com>
 Standards-Version: 4.1.2
-Build-Depends: debhelper (>= 12), libncurses5-dev
+Build-Depends: debhelper (>= 12),
+               debhelper-compat (=13),
+               libncurses5-dev
 Homepage: http://kernel.ubuntu.com/~cking/pagemon
 
 Package: pagemon
