@@ -320,6 +320,49 @@ static pid_t proc_name_to_pid(char *const name)
 	return pid;
 }
 
+/*
+ *  get_proc_self_stat_field()
+ *     find nth field of /proc/$PID/stat data. This works around
+ *     the problem that the comm field can contain spaces and
+ *     multiple ) so sscanf on this field won't work.  The returned
+ *     pointer is the start of the Nth field and it is up to the
+ *     caller to determine the end of the field
+ */
+static const char *get_proc_self_stat_field(const char *buf, const int num)
+{
+	const char *ptr = buf, *comm_end;
+	int n;
+
+	if (num < 1 || !buf || !*buf)
+		return NULL;
+	if (num == 1)
+		return buf;
+	if (num == 2)
+		return strstr(buf, "(");
+
+	comm_end = NULL;
+	for (ptr = buf; *ptr; ptr++) {
+		if (*ptr == ')')
+			comm_end = ptr;
+	}
+	if (!comm_end)
+		return NULL;
+	comm_end++;
+	n = num - 2;
+
+	ptr = comm_end;
+	while (*ptr) {
+		while (*ptr && *ptr == ' ')
+			ptr++;
+		n--;
+		if (n <= 0)
+			break;
+		while (*ptr && *ptr != ' ')
+			ptr++;
+	}
+
+	return ptr;
+}
 
 /*
  *  read_faults()
@@ -329,8 +372,8 @@ static int read_faults(
 	uint64_t *const minor_flt,
 	uint64_t *const major_flt)
 {
-	int count = 0;
-	char buf[4096], *ptr = buf;
+	char buf[4096];
+	const char *ptr;
 
 	*minor_flt = 0;
 	*major_flt = 0;
@@ -338,21 +381,9 @@ static int read_faults(
 	if (read_buf(g.path_stat, buf, sizeof(buf)) < 0)
 		return -1;
 
-	/*
-	 * Skipping over fields is less expensive
-	 * than lots of sscanf fields being parsed
-	 */
-	while (*ptr) {
-		if (*ptr == ' ') {
-			count++;
-			if (count == 9)
-				break;
-		}
-		ptr++;
-	}
-	if (!*ptr)
+	ptr = get_proc_self_stat_field(buf, 10);
+	if (!ptr)
 		return -1;
-
 	if (sscanf(ptr, "%" SCNu64 " %*u %" SCNu64, minor_flt, major_flt) != 2)
 		return -1;
 	return 0;
