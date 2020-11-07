@@ -1,3 +1,11 @@
+pagemon (0.01.21-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * handle weird comm field in /proc/$PID/stat
+  * use correct sizeof on path_oom
+
+ -- Colin King <colin.king@canonical.com>  Sat, 7 Nov 2020 18:06:12 +0000
+
 pagemon (0.01.20-1) unstable; urgency=medium
 
   * Makefile: bump version
