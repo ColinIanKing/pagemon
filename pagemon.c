@@ -1216,7 +1216,7 @@ int main(int argc, char **argv)
 		"/proc/%i/status", g.pid);
 	(void)snprintf(g.path_stat, sizeof(g.path_stat),
 		"/proc/%i/stat", g.pid);
-	(void)snprintf(g.path_oom, sizeof(g.path_stat),
+	(void)snprintf(g.path_oom, sizeof(g.path_oom),
 		"/proc/%i/oom_score", g.pid);
 
 	(void)initscr();
