@@ -808,7 +808,6 @@ static int show_pages(
 		(void)memset(pagemap_info_buf, 0, sz);
 
 		if (idx >= (index_t)g.mem_info.npages) {
-			addr = 0;
 			map = NULL;
 		} else {
 			addr = g.mem_info.pages[idx].addr;
