@@ -13,5 +13,5 @@ pagemon command line options:
 
 ## Examples:
 
-[viewing an ARM64 QEMU virtual machine running](https://www.youtube.com/embed/AS0s5nl_IXY)
-[viewing page activity on a process that is sorting data](https://www.youtube.com/embed/Wq8YtKvC-Rw)
+* [viewing an ARM64 QEMU virtual machine running](https://www.youtube.com/embed/AS0s5nl_IXY)
+* [viewing page activity on a process that is sorting data](https://www.youtube.com/embed/Wq8YtKvC-Rw)
