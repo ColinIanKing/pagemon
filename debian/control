@@ -2,12 +2,12 @@ Source: pagemon
 Rules-Requires-Root: no
 Section: admin
 Priority: optional
-Maintainer: Colin King <colin.king@canonical.com>
-Standards-Version: 4.1.2
+Maintainer: Colin Ian King <colin.i.king@gmail.com>
+Standards-Version: 4.5.1
 Build-Depends: debhelper (>= 12),
                debhelper-compat (=13),
                libncurses5-dev
-Homepage: http://kernel.ubuntu.com/~cking/pagemon
+Homepage: https://github.com/ColinIanKing/pagemon
 
 Package: pagemon
 Architecture: linux-any
