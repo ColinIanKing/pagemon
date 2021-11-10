@@ -18,7 +18,7 @@
 # Author: Colin Ian King <colin.i.king@gmail.com>
 #
 
-VERSION=0.01.22
+VERSION=0.01.23
 
 CFLAGS += -Wall -Wextra -DVERSION='"$(VERSION)"' -O2 -fPIC
 LDFLAGS += -lncurses
