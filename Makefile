@@ -53,7 +53,7 @@ dist:
 	rm -rf pagemon-$(VERSION)
 	mkdir pagemon-$(VERSION)
 	cp -rp README Makefile pagemon.c pagemon.8 perf.c perf.h COPYING \
-		.travis.yml bash-completion pagemon-$(VERSION)
+		.travis.yml bash-completion README.md pagemon-$(VERSION)
 	tar -Jcf pagemon-$(VERSION).tar.xz pagemon-$(VERSION)
 	rm -rf pagemon-$(VERSION)
 
