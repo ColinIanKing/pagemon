@@ -651,7 +651,7 @@ static void show_vm(void)
 	}
 
 	if (!read_oom_score(&score)) {
-		(void)mvwprintw(g.mainwin, y++, x,
+		(void)mvwprintw(g.mainwin, y, x,
 			" OOM Score: %8" PRIu64 "    ", score);
 	}
 }
