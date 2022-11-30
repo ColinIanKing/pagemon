@@ -822,7 +822,7 @@ static int show_pages(
 
 		for (j = 0; j < xmax; j++) {
 			char state = '.';
-			int attr = COLOR_PAIR(BLACK_WHITE);
+			int attr;
 
 			if (idx >= (index_t)g.mem_info.npages) {
 				attr = COLOR_PAIR(BLACK_BLACK);
