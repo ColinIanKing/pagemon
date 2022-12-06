@@ -1,3 +1,15 @@
+pagemon (0.02.00-1) unstable; urgency=medium
+
+  * Makefile: bump to version 0.02.00
+  * Debian/control: update debhelper to >= 13
+  * Debian/control: update standards version to 4.6.1
+  * Update copyright year
+  * Remove redundant increment of y
+  * Remove redundant assignment to attr
+  * Remove unused assignment to ptr
+
+ -- Colin Ian King <colin.i.king@gmail.com>  Tue, 6 Nov 2022 17:34:33 +0000
+
 pagemon (0.01.23-1) unstable; urgency=medium
 
   * Makefile: bump version
