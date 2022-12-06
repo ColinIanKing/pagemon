@@ -4,7 +4,7 @@ Section: admin
 Priority: optional
 Maintainer: Colin Ian King <colin.i.king@gmail.com>
 Standards-Version: 4.6.1
-Build-Depends: debhelper (>= 12),
+Build-Depends: debhelper (>= 13),
                debhelper-compat (=13),
                libncurses5-dev
 Homepage: https://github.com/ColinIanKing/pagemon
