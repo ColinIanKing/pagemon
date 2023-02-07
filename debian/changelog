@@ -1,3 +1,13 @@
+pagemon (0.02.01-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * debian/changelog: fix incorrect month in previous date
+  * debian/control: update standards version to 4.6.2
+  * debian/control: use libncurses-dev instead of libncurses5-dev
+  * Update copyright
+
+ -- Colin Ian King <colin.i.king@gmail.com>  Tue, 7 Feb 2023 15:06:54 +0000
+
 pagemon (0.02.00-1) unstable; urgency=medium
 
   * Makefile: bump to version 0.02.00
