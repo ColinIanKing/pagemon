@@ -1,3 +1,10 @@
+pagemon (0.02.02-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Makefile: remove perf.o on clean rule (Closes: #1045314)
+
+ -- Colin Ian King <colin.i.king@gmail.com>  Mon, 14 Aug 2023 10:00:00 +0100
+
 pagemon (0.02.01-1) unstable; urgency=medium
 
   * Makefile: bump version
