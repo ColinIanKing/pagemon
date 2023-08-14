@@ -58,7 +58,7 @@ dist:
 	rm -rf pagemon-$(VERSION)
 
 clean:
-	rm -f pagemon pagemon.o pagemon.8.gz pagemon-$(VERSION).tar.xz
+	rm -f pagemon pagemon.o perf.o pagemon.8.gz pagemon-$(VERSION).tar.xz
 
 install: pagemon pagemon.8.gz
 	mkdir -p ${DESTDIR}${BINDIR}
