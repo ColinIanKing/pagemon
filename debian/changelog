@@ -1,3 +1,13 @@
+pagemon (0.02.03-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * perf.h: remove unused function perf_init()
+  * Makefile: remove -fPIC build flag
+  * debian/rules: add missing hardening flags
+  * Update copyright
+
+ -- Colin Ian King <colin.i.king@gmail.com>  Fri, 12 Jan 2024 11:29:28 +0000
+
 pagemon (0.02.02-1) unstable; urgency=medium
 
   * Makefile: bump version
