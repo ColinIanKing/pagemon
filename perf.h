@@ -71,11 +71,6 @@ typedef struct {
 	uint64_t time_running;		/* perf time running */
 } perf_data_t;
 
-static inline void perf_init(perf_t *p)
-{
-        memset(p, 0, sizeof(perf_t));
-}
-
 extern int perf_start(perf_t *p, const pid_t pid);
 extern int perf_stop(perf_t *p);
 extern uint64_t perf_counter(const perf_t *p, const int id);
