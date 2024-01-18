@@ -1,3 +1,10 @@
+pagemon (0.02.04-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Fix potential integer overflow on 32 bit multiplications
+
+ -- Colin Ian King <colin.i.king@gmail.com>  Thu, 18 Jan 2024 14:59:17 +0000
+
 pagemon (0.02.03-1) unstable; urgency=medium
 
   * Makefile: bump version
