@@ -1642,8 +1642,8 @@ force_ch:
 		 */
 		if (g.view == VIEW_MEM) {
 			if (p->ypos > p->ymax - 1) {
-				data_index += p->xmax *
-					(p->ypos - (p->ymax - 1));
+				data_index += (index_t)p->xmax *
+					(index_t)(p->ypos - (p->ymax - 1));
 				p->ypos = p->ymax - 1;
 				if (data_index >= g.page_size) {
 					data_index -= g.page_size;
@@ -1660,12 +1660,12 @@ force_ch:
 			}
 		} else {
 			if (p->ypos > p->ymax - 1) {
-				page_index += zoom * p->xmax *
-					(p->ypos - (p->ymax - 1));
+				page_index += zoom * (index_t)p->xmax *
+					(index_t)(p->ypos - (p->ymax - 1));
 				p->ypos = p->ymax - 1;
 			}
 			if (p->ypos < 0) {
-				page_index -= zoom * p->xmax * (-p->ypos);
+				page_index -= zoom * (index_t)p->xmax * (index_t)(-p->ypos);
 				p->ypos = 0;
 			}
 		}
