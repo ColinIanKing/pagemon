@@ -1,3 +1,12 @@
+pagemon (0.02.05-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * debian/control: update Standards-Version to 4.7.1.1
+  * Ensure page_index can never be less than zero
+  * Update copyright year
+
+ -- Colin Ian King <colin.i.king@gmail.com>  Wed, 26 Feb 2025 14:47:23 +0000
+
 pagemon (0.02.04-1) unstable; urgency=medium
 
   * Makefile: bump version
