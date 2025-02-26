@@ -1619,6 +1619,8 @@ force_ch:
 			p->xpos = p->xmax - 1;
 			break;
 		}
+		if (page_index < 0)
+			page_index = 0;
 
 		position[VIEW_PAGE].ypos_max =
 			(((g.mem_info.npages - page_index) / zoom) - p->xpos) /
