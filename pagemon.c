@@ -1015,7 +1015,7 @@ static inline void show_key(void)
 	banner(LINES - 1);
 	if (g.view == VIEW_PAGE) {
 		(void)wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
-		(void)mvwprintw(g.mainwin, LINES - 1, 0, "Page View, KEY: ");
+		(void)mvwprintw(g.mainwin, LINES - 1, 0, "Page View: ");
 		(void)wattrset(g.mainwin, COLOR_PAIR(WHITE_RED));
 		(void)wprintw(g.mainwin, "A");
 		(void)wattrset(g.mainwin, COLOR_PAIR(WHITE_BLUE) | A_BOLD);
