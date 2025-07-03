@@ -1,0 +1,18 @@
+#!/bin/sh
+# Convenience wrapper to search for a command and show its memory activity in pagemon
+
+CMD=$*
+[ -z "$CMD" ] \
+  && echo "Command to search for missing!" \
+  && exit 1
+
+# Only invoke fzf if stdin is interactive, otherwise pick oldest process
+tty > /dev/null \
+  && PID=$(pgrep -la "$CMD" | fzf --exact --height=~100% --border | awk '{print $1}') \
+  || PID=$(pgrep --oldest "$CMD")
+
+# Invoke with automatic zoom mode and VM information view
+[ -z "$PID" ] \
+  && echo "PID is empty!" \
+  && exit 2 \
+  || pagemon -avp "$PID"
