@@ -1461,6 +1461,7 @@ int main(int argc, char **argv)
 				map->name[0] == '\0' ?
 					"[Anonymous]" : basename(map->name));
 		}
+		(void)mvwprintw(g.mainwin, 0, COLS - 20, " PID %7d", g.pid);
 		(void)mvwprintw(g.mainwin, 0, COLS - 8, " %6.1f%%", percent);
 
 		(void)wrefresh(g.mainwin);
