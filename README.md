@@ -6,7 +6,7 @@ pagemon command line options:
 
 * -h help
 * -a enable automatic zoom mode
-* -d delay in microseconds between refreshes, default 10000
+* -d delay in microseconds between refreshes, default 15000
 * -p specify process ID of process to monitor
 * -r read (page back in) pages at start
 * -t specify ticks between dirty page checks
