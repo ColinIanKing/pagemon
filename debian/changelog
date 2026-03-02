@@ -1,3 +1,9 @@
+pagemon (0.02.06-1) unstable; urgency=medium
+
+  * Sync to latest upstream version
+
+ -- Colin Ian King <colin.i.king@gmail.com>  Mon, 2 Mar 2026 17:09:11 +0000
+
 pagemon (0.02.05-1) unstable; urgency=medium
 
   * Makefile: bump version
